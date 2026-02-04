@@ -215,6 +215,12 @@ declare global {
         threshold: number;
         changePercent?: number;
     };
+
+    type UserForNewsEmail = {
+        id: string;
+        email: string;
+        name: string;
+    };
 }
 
 export {};
