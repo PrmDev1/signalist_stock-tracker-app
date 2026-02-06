@@ -248,6 +248,7 @@ export const getStocksDetails = cache(async (symbol: string) => {
       marketCapFormatted: formatMarketCapValue(
         profileData?.marketCapitalization || 0
       ),
+      logo: (profileData as any)?.logo || null,
     };
   } catch (error) {
     console.error(`Error fetching details for ${cleanSymbol}:`, error);

@@ -139,6 +139,7 @@ export const getWatchlistWithData = async () => {
           changePercent: stockData.changePercent,
           marketCap: stockData.marketCapFormatted,
           peRatio: stockData.peRatio,
+          logo: stockData.logo,
         };
       }),
     );

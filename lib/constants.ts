@@ -170,6 +170,29 @@ export const MARKET_DATA_WIDGET_CONFIG = {
     ],
 };
 
+// === DASHBOARD V2 : MARKET SUMMARY ===
+export const ADVANCED_CHART_WIDGET_CONFIG = {
+  autosize: true,
+  symbol: "SP:SPX",
+  interval: "D",
+  timezone: "Etc/UTC",
+  theme: "dark",
+  style: "1",
+  locale: "en",
+
+  hide_top_toolbar: true,
+  hide_side_toolbar: true,
+  allow_symbol_change: false,
+
+  backgroundColor: "#0f1115",
+  gridColor: "rgba(255,255,255,0.06)",
+
+  studies: [],
+  width: "100%",
+  height: 320,
+};
+
+
 export const SYMBOL_INFO_WIDGET_CONFIG = (symbol: string) => ({
     symbol: symbol.toUpperCase(),
     colorTheme: 'dark',
@@ -337,3 +360,4 @@ export const WATCHLIST_TABLE_HEADER = [
     'Alert',
     'Action',
 ];
+

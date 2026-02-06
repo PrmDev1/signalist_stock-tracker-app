@@ -1,13 +1,15 @@
 import TradingViewWidget from "@/components/TradingViewWidget";
+import WatchlistGrid from "@/components/WatchlistGrid";
+import { getWatchlistWithData } from "@/lib/actions/watchlist.actions";
 import {
-    HEATMAP_WIDGET_CONFIG,
     MARKET_DATA_WIDGET_CONFIG,
     MARKET_OVERVIEW_WIDGET_CONFIG,
     TOP_STORIES_WIDGET_CONFIG
 } from "@/lib/constants";
 
-const Home = () => {
+const Home = async () => {
     const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
+    const watchlistData = await getWatchlistWithData();
 
     return (
         <div className="flex min-h-screen home-wrapper">
@@ -21,16 +23,12 @@ const Home = () => {
                     height={600}
                   />
               </div>
-              <div className="md-col-span xl:col-span-2">
-                  <TradingViewWidget
-                      title="Stock Heatmap"
-                      scriptUrl={`${scriptUrl}stock-heatmap.js`}
-                      config={HEATMAP_WIDGET_CONFIG}
-                      height={600}
-                  />
+              <div className="md:col-span-1 xl:col-span-2">
+                  <WatchlistGrid watchlist={watchlistData} limit={6} showHeader={true} />
               </div>
           </section>
-            <section className="grid w-full gap-8 home-section">
+
+          <section className="grid w-full gap-8 home-section">
                 <div className="h-full md:col-span-1 xl:col-span-1">
                     <TradingViewWidget
                         scriptUrl={`${scriptUrl}timeline.js`}
