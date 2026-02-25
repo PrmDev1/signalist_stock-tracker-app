@@ -1,0 +1,52 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
+type Props = {
+  onClose: () => void;
+};
+
+export default function AddPortfolioModal({ onClose }: Props) {
+  const router = useRouter();
+
+  const handleCreate = () => {
+    router.push('/portfolio/select-stocks');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 w-[420px]">
+        <h2 className="text-lg font-semibold mb-4 text-white">
+          Create Portfolio
+        </h2>
+
+        <p className="text-sm text-gray-400 mb-6">
+          Select stocks and optimize your portfolio allocation
+        </p>
+
+        <div className="bg-neutral-800 p-4 rounded-xl mb-6">
+          <p className="text-sm text-gray-300">
+            👛 Choose stocks from our investable universe and use AI-powered optimization to allocate capital efficiently.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            onClick={onClose}
+            className="text-sm text-gray-400 hover:text-white transition px-4 py-2"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleCreate}
+            className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-600 transition"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

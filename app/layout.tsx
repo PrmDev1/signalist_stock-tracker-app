@@ -24,7 +24,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    // Suppress hydration warnings on <html> to avoid errors caused by
+    // dev-tools or browser extensions injecting attributes (e.g. CSS vars)
+    // that differ between server and client during development.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
