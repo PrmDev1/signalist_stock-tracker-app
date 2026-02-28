@@ -3,13 +3,28 @@
 import { auth } from '../better-auth/auth';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getWatchlistSymbolsByEmail } from './watchlist.actions';
 import { getDateRange, validateArticle, formatArticle, formatPrice, formatChangePercent, formatMarketCapValue } from '@/lib/utils';
 import { POPULAR_STOCK_SYMBOLS } from '@/lib/constants';
 import { cache } from 'react';
+import { connectToDatabase } from '@/database/mongoose';
+import { Portfolio } from '@/database/models/portfolio.model';
 
 const CLOUDFLARE_BASE_URL = process.env.NEXT_PUBLIC_CLOUDFLARE_BASE_URL ;
 const CLOUDFLARE_API_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_API_KEY ?? '';
+
+function normalizeRiskLevel(value: unknown): 'low' | 'medium' | 'high' {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  if (normalized === 'low' || normalized === 'high' || normalized === 'medium') {
+    return normalized;
+  }
+
+  return 'medium';
+}
 
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
   const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
@@ -50,6 +65,20 @@ interface PortfolioStatusResponse {
     expectedReturn: number;
     volatility: number;
   };
+}
+
+export interface SavedPortfolioCardData {
+  id: string;
+  name: string;
+  tickers: string[];
+  riskLevel: 'low' | 'medium' | 'high';
+  volatility: number;
+  expectedReturn: number;
+  updatedAt: string;
+}
+
+export interface SavedPortfolioDetailData extends SavedPortfolioCardData {
+  allocations: Record<string, { weight: number; allocatedAmount: number }>;
 }
 
 /**
@@ -211,7 +240,9 @@ export async function savePortfolioToDatabase(
   tickers: string[],
   allocations: Record<string, { weight: number; allocatedAmount: number }>,
   expectedReturn: number,
-  volatility: number
+  volatility: number,
+  riskLevel: 'low' | 'medium' | 'high',
+  modelName?: 'mvo' | 'semi'
 ): Promise<{
   success: boolean;
   portfolioId?: string;
@@ -230,23 +261,179 @@ export async function savePortfolioToDatabase(
       };
     }
 
-    // TODO: บันทึกลงฐานข้อมูล MongoDB
-    // ต้องสร้าง Model สำหรับ Portfolio ก่อน
-    // Example:
-    // const portfolio = await Portfolio.create({
-    //   userId: session.user.id,
-    //   name,
-    //   tickers,
-    //   allocations,
-    //   expectedReturn,
-    //   volatility,
-    //   createdAt: new Date(),
-    // });
+    await connectToDatabase();
+
+    const portfolio = await Portfolio.create({
+      userId: session.user.id,
+      name: name.trim(),
+      tickers: tickers.map((ticker) => ticker.trim().toUpperCase()),
+      allocations,
+      expectedReturn,
+      volatility,
+      riskLevel: normalizeRiskLevel(riskLevel),
+      modelName,
+    });
 
     return {
       success: true,
-      portfolioId: 'portfolio_' + Date.now(), // ตัวอย่าง ID
+      portfolioId: String(portfolio._id),
     };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+export async function getSavedPortfolios(): Promise<{
+  success: boolean;
+  portfolios?: SavedPortfolioCardData[];
+  error?: string;
+}> {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    await connectToDatabase();
+    const portfolios = await Portfolio.find({ userId: session.user.id })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return {
+      success: true,
+      portfolios: portfolios.map((portfolio: any) => ({
+        
+        id: String(portfolio._id),
+        name: portfolio.name,
+        tickers: (() => {
+          const allocationTickers = portfolio?.allocations
+            ? Object.keys(
+                portfolio.allocations instanceof Map
+                  ? Object.fromEntries(portfolio.allocations.entries())
+                  : portfolio.allocations
+              )
+            : [];
+
+          if (allocationTickers.length > 0) {
+            return allocationTickers.map((ticker) => String(ticker).trim().toUpperCase());
+          }
+
+          return Array.isArray(portfolio.tickers)
+            ? portfolio.tickers.map((ticker: string) => String(ticker).trim().toUpperCase())
+            : [];
+        })(),
+        riskLevel: normalizeRiskLevel(portfolio.riskLevel),
+        volatility: Number(portfolio.volatility || 0),
+        expectedReturn: Number(portfolio.expectedReturn || 0),
+        updatedAt: new Date(portfolio.updatedAt || portfolio.createdAt || Date.now()).toISOString(),
+      })),
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+export async function getSavedPortfolioById(id: string): Promise<{
+  success: boolean;
+  portfolio?: SavedPortfolioDetailData;
+  error?: string;
+}> {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    await connectToDatabase();
+    const portfolio = await Portfolio.findOne({ _id: id, userId: session.user.id }).lean();
+
+    if (!portfolio) {
+      return {
+        success: false,
+        error: 'Portfolio not found',
+      };
+    }
+
+    return {
+      success: true,
+      portfolio: {
+        id: String((portfolio as any)._id),
+        name: (portfolio as any).name,
+        tickers: (() => {
+          const allocationSource =
+            (portfolio as any).allocations instanceof Map
+              ? Object.fromEntries((portfolio as any).allocations.entries())
+              : ((portfolio as any).allocations || {});
+
+          const allocationTickers = Object.keys(allocationSource || {});
+          if (allocationTickers.length > 0) {
+            return allocationTickers.map((ticker) => String(ticker).trim().toUpperCase());
+          }
+
+          return Array.isArray((portfolio as any).tickers)
+            ? (portfolio as any).tickers.map((ticker: string) => String(ticker).trim().toUpperCase())
+            : [];
+        })(),
+        riskLevel: normalizeRiskLevel((portfolio as any).riskLevel),
+        volatility: Number((portfolio as any).volatility || 0),
+        expectedReturn: Number((portfolio as any).expectedReturn || 0),
+        updatedAt: new Date((portfolio as any).updatedAt || (portfolio as any).createdAt || Date.now()).toISOString(),
+        allocations:
+          (portfolio as any).allocations instanceof Map
+            ? Object.fromEntries((portfolio as any).allocations.entries())
+            : ((portfolio as any).allocations || {}),
+      },
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+export async function deleteSavedPortfolio(id: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    await connectToDatabase();
+    const deleted = await Portfolio.findOneAndDelete({ _id: id, userId: session.user.id });
+
+    if (!deleted) {
+      return {
+        success: false,
+        error: 'Portfolio not found',
+      };
+    }
+
+    revalidatePath('/portfolio');
+    revalidatePath(`/portfolio/${id}`);
+
+    return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {

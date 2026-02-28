@@ -6,7 +6,7 @@ import {
   removeFromWatchlist,
 } from '@/lib/actions/watchlist.actions';
 import { Star, StarIcon, Stars, Trash2 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner'
 
 // Minimal WatchlistButton implementation to satisfy page requirements.
@@ -22,6 +22,10 @@ const WatchlistButton = ({
   onWatchlistChange,
 }: WatchlistButtonProps) => {
   const [added, setAdded] = useState<boolean>(!!isInWatchlist);
+
+  useEffect(() => {
+    setAdded(!!isInWatchlist);
+  }, [isInWatchlist]);
 
   const label = useMemo(() => {
     if (type === 'icon') return added ? '' : '';

@@ -59,6 +59,20 @@ export default function SearchCommand({
     debouncedSearch();
   }, [searchTerm]);
 
+  useEffect(() => {
+    const refreshPopularStocks = async () => {
+      if (!open || isSearchMode) return;
+      try {
+        const latest = await searchStocks();
+        setStocks(latest);
+      } catch {
+        // keep existing stocks if refresh fails
+      }
+    };
+
+    refreshPopularStocks();
+  }, [open, isSearchMode]);
+
   const handleSelectStock = () => {
     setOpen(false);
     setSearchTerm('');
@@ -67,11 +81,10 @@ export default function SearchCommand({
 
   // Handle watchlist changes status change
   const handleWatchlistChange = async (symbol: string, isAdded: boolean) => {
-    // Update current stocks
-    setStocks(
-      initialStocks?.map((stock) =>
+    setStocks((prev) =>
+      (prev || []).map((stock) =>
         stock.symbol === symbol ? { ...stock, isInWatchlist: isAdded } : stock
-      ) || []
+      )
     );
   };
 

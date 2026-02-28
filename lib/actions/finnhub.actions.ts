@@ -10,8 +10,36 @@ import { cache } from 'react';
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
+const FINNHUB_COOLDOWN_MIN_MS = 30_000;
+const FINNHUB_COOLDOWN_MAX_MS = 60_000;
+let finnhubCooldownUntil = 0;
+
+export async function getFinnhubCooldownRemainingSeconds(): Promise<number> {
+  const remainingMs = finnhubCooldownUntil - Date.now();
+  if (remainingMs <= 0) return 0;
+  return Math.ceil(remainingMs / 1000);
+}
+
+class FinnhubApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'FinnhubApiError';
+    this.status = status;
+  }
+}
 
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
+  const now = Date.now();
+  if (now < finnhubCooldownUntil) {
+    const remainingSeconds = Math.ceil((finnhubCooldownUntil - now) / 1000);
+    throw new FinnhubApiError(
+      429,
+      `Finnhub cooldown active. Retry in ${remainingSeconds}s`
+    );
+  }
+
   const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
     ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
     : { cache: 'no-store' };
@@ -19,7 +47,13 @@ async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T>
   const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Fetch failed ${res.status}: ${text}`);
+    if (res.status === 429) {
+      const cooldownMs =
+        FINNHUB_COOLDOWN_MIN_MS +
+        Math.floor(Math.random() * (FINNHUB_COOLDOWN_MAX_MS - FINNHUB_COOLDOWN_MIN_MS + 1));
+      finnhubCooldownUntil = Date.now() + cooldownMs;
+    }
+    throw new FinnhubApiError(res.status, `Fetch failed ${res.status}: ${text}`);
   }
   return (await res.json()) as T;
 }
@@ -125,50 +159,28 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
       let results: FinnhubSearchResult[] = [];
 
       if (!trimmed) {
-        // Fetch top 10 popular symbols' profiles
-        const top = POPULAR_STOCK_SYMBOLS.slice(0, 10);
-        const profiles = await Promise.all(
-          top.map(async (sym) => {
-            try {
-              const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(
-                sym
-              )}&token=${token}`;
-              // Revalidate every hour
-              const profile = await fetchJSON<any>(url, 3600);
-              return { sym, profile } as { sym: string; profile: any };
-            } catch (e) {
-              console.error('Error fetching profile2 for', sym, e);
-              return { sym, profile: null } as { sym: string; profile: any };
-            }
-          })
-        );
-
-        results = profiles
-          .map(({ sym, profile }) => {
-            const symbol = sym.toUpperCase();
-            const name: string | undefined =
-              profile?.name || profile?.ticker || undefined;
-            const exchange: string | undefined = profile?.exchange || undefined;
-            if (!name) return undefined;
-            const r: FinnhubSearchResult = {
-              symbol,
-              description: name,
-              displaySymbol: symbol,
-              type: 'Common Stock',
-            };
-            // We don't include exchange in FinnhubSearchResult type, so carry via mapping later using profile
-            // To keep pipeline simple, attach exchange via closure map stage
-            // We'll reconstruct exchange when mapping to final type
-            (r as any).__exchange = exchange; // internal only
-            return r;
-          })
-          .filter((x): x is FinnhubSearchResult => Boolean(x));
+        // Avoid expensive API fan-out on first load (helps prevent 429).
+        // Use popular symbols as immediate suggestions and reserve Finnhub API for user-typed queries.
+        results = POPULAR_STOCK_SYMBOLS.slice(0, 10).map((sym) => ({
+          symbol: sym.toUpperCase(),
+          description: sym.toUpperCase(),
+          displaySymbol: sym.toUpperCase(),
+          type: 'Common Stock',
+        }));
       } else {
-        const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(
-          trimmed
-        )}&token=${token}`;
-        const data = await fetchJSON<FinnhubSearchResponse>(url, 1800);
-        results = Array.isArray(data?.result) ? data.result : [];
+        try {
+          const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(
+            trimmed
+          )}&token=${token}`;
+          const data = await fetchJSON<FinnhubSearchResponse>(url, 1800);
+          results = Array.isArray(data?.result) ? data.result : [];
+        } catch (error) {
+          if (error instanceof FinnhubApiError && error.status === 429) {
+            console.warn('Finnhub search rate limit reached. Returning empty suggestions temporarily.');
+            return [];
+          }
+          throw error;
+        }
       }
 
       const mapped: StockWithWatchlistStatus[] = results
@@ -251,6 +263,21 @@ export const getStocksDetails = cache(async (symbol: string) => {
       logo: (profileData as any)?.logo || null,
     };
   } catch (error) {
+    if (error instanceof FinnhubApiError && error.status === 429) {
+      console.warn(`Finnhub rate limit reached for ${cleanSymbol}. Returning fallback data.`);
+      return {
+        symbol: cleanSymbol,
+        company: cleanSymbol,
+        currentPrice: 0,
+        changePercent: 0,
+        priceFormatted: '—',
+        changeFormatted: '—',
+        peRatio: '—',
+        marketCapFormatted: '—',
+        logo: null,
+      };
+    }
+
     console.error(`Error fetching details for ${cleanSymbol}:`, error);
     throw new Error('Failed to fetch stock details');
   }

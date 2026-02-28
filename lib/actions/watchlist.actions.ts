@@ -123,24 +123,49 @@ export const getWatchlistWithData = async () => {
 
     const stocksWithData = await Promise.all(
       watchlist.map(async (item) => {
-        const stockData = await getStocksDetails(item.symbol);
+        try {
+          const stockData = await getStocksDetails(item.symbol);
 
-        if (!stockData) {
-          console.warn(`Failed to fetch data for ${item.symbol}`);
-          return item;
+          if (!stockData) {
+            console.warn(`Failed to fetch data for ${item.symbol}`);
+            return {
+              company: item.company,
+              symbol: item.symbol,
+              currentPrice: 0,
+              priceFormatted: '—',
+              changeFormatted: '—',
+              changePercent: 0,
+              marketCap: '—',
+              peRatio: '—',
+              logo: null,
+            };
+          }
+
+          return {
+            company: stockData.company,
+            symbol: stockData.symbol,
+            currentPrice: stockData.currentPrice,
+            priceFormatted: stockData.priceFormatted,
+            changeFormatted: stockData.changeFormatted,
+            changePercent: stockData.changePercent,
+            marketCap: stockData.marketCapFormatted,
+            peRatio: stockData.peRatio,
+            logo: stockData.logo,
+          };
+        } catch (err) {
+          console.warn(`Using fallback watchlist data for ${item.symbol}:`, err);
+          return {
+            company: item.company,
+            symbol: item.symbol,
+            currentPrice: 0,
+            priceFormatted: '—',
+            changeFormatted: '—',
+            changePercent: 0,
+            marketCap: '—',
+            peRatio: '—',
+            logo: null,
+          };
         }
-
-        return {
-          company: stockData.company,
-          symbol: stockData.symbol,
-          currentPrice: stockData.currentPrice,
-          priceFormatted: stockData.priceFormatted,
-          changeFormatted: stockData.changeFormatted,
-          changePercent: stockData.changePercent,
-          marketCap: stockData.marketCapFormatted,
-          peRatio: stockData.peRatio,
-          logo: stockData.logo,
-        };
       }),
     );
 

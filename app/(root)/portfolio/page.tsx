@@ -1,16 +1,14 @@
 
 import PortfolioPageContent from '@/components/portfolio/PortfolioPageContent';
-import PortfolioOptimizer from '@/components/portfolio/PortfolioOptimizer';
+import { getSavedPortfolios } from '@/lib/actions/cloudflare.actions';
 
-export default function PortfolioPage() {
+export default async function PortfolioPage() {
+  const response = await getSavedPortfolios();
+  const portfolios = response.success && response.portfolios ? response.portfolios : [];
+
   return (
     <div className="space-y-12">
-      <PortfolioPageContent />
-      
-      {/* Portfolio Optimizer Section */}
-      <div id="optimizer" className="mt-12 pt-8 border-t border-neutral-700">
-        <PortfolioOptimizer />
-      </div>
+      <PortfolioPageContent portfolios={portfolios} />
     </div>
   );
 }
