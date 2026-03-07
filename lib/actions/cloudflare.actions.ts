@@ -71,6 +71,8 @@ export interface SavedPortfolioCardData {
   id: string;
   name: string;
   tickers: string[];
+  mvoId?: string;
+  initialCapital?: number;
   riskLevel: 'low' | 'medium' | 'high';
   volatility: number;
   expectedReturn: number;
@@ -241,8 +243,10 @@ export async function savePortfolioToDatabase(
   allocations: Record<string, { weight: number; allocatedAmount: number }>,
   expectedReturn: number,
   volatility: number,
+  initialCapital: number,
   riskLevel: 'low' | 'medium' | 'high',
-  modelName?: 'mvo' | 'semi'
+  modelName?: 'mvo' | 'semi',
+  mvoId?: string
 ): Promise<{
   success: boolean;
   portfolioId?: string;
@@ -267,6 +271,8 @@ export async function savePortfolioToDatabase(
       userId: session.user.id,
       name: name.trim(),
       tickers: tickers.map((ticker) => ticker.trim().toUpperCase()),
+      mvoId: mvoId?.trim() || undefined,
+      initialCapital,
       allocations,
       expectedReturn,
       volatility,
@@ -312,6 +318,8 @@ export async function getSavedPortfolios(): Promise<{
         
         id: String(portfolio._id),
         name: portfolio.name,
+        mvoId: portfolio.mvoId ? String(portfolio.mvoId) : undefined,
+        initialCapital: Number(portfolio.initialCapital || 0),
         tickers: (() => {
           const allocationTickers = portfolio?.allocations
             ? Object.keys(
@@ -373,6 +381,8 @@ export async function getSavedPortfolioById(id: string): Promise<{
       portfolio: {
         id: String((portfolio as any)._id),
         name: (portfolio as any).name,
+        mvoId: (portfolio as any).mvoId ? String((portfolio as any).mvoId) : undefined,
+        initialCapital: Number((portfolio as any).initialCapital || 0),
         tickers: (() => {
           const allocationSource =
             (portfolio as any).allocations instanceof Map

@@ -202,8 +202,10 @@ export default function PortfolioOptimizer() {
         result.allocations,
         result.expectedReturn,
         result.volatility,
+        investmentAmount,
         optimizedRiskLevelRef.current,
-        modelName
+        modelName,
+        reqId || undefined
       );
 
       if (response.success) {

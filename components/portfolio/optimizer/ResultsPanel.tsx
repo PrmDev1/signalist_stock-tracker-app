@@ -28,6 +28,9 @@ export default function ResultsPanel({
   isSaving,
   canCreatePortfolio,
 }: ResultsPanelProps) {
+  const expectedReturnPercent = result ? result.expectedReturn * 100 : 0;
+  const volatilityPercent = result ? result.volatility * 100 : 0;
+
   return (
     <>
       {status === 'FAILED' && errorMsg && (
@@ -58,11 +61,11 @@ export default function ResultsPanel({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-teal-400/30 bg-teal-400/10 p-4">
               <p className="text-xs uppercase tracking-wide text-teal-400">Expected Annual Return</p>
-              <p className="mt-1 text-2xl font-bold text-teal-400">{formatPercentWithoutRounding(result.expectedReturn)}</p>
+              <p className="mt-1 text-2xl font-bold text-teal-400">{formatPercentWithoutRounding(expectedReturnPercent)}</p>
             </div>
             <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-4">
               <p className="text-xs uppercase tracking-wide text-yellow-400">Volatility (Risk)</p>
-              <p className="mt-1 text-2xl font-bold text-yellow-400">{formatPercentWithoutRounding(result.volatility)}</p>
+              <p className="mt-1 text-2xl font-bold text-yellow-400">{formatPercentWithoutRounding(volatilityPercent)}</p>
             </div>
           </div>
 
@@ -96,7 +99,7 @@ export default function ResultsPanel({
             {Object.keys(result.allocations).map((ticker) => (
               <article key={`${ticker}-mobile`} className="rounded-lg border border-gray-700 bg-gray-700/40 p-3">
                 <p className="text-sm font-semibold text-white">{ticker}</p>
-                <p className="mt-1 text-xs text-gray-300">Weight: {formatPercentWithoutRounding(result.allocations[ticker].weight)}</p>
+                <p className="mt-1 text-xs text-gray-300">Weight: {formatPercentWithoutRounding(result.allocations[ticker].weight * 100)}</p>
                 <p className="text-xs text-gray-400">Allocated: ${result.allocations[ticker].allocatedAmount.toLocaleString()}</p>
               </article>
             ))}
@@ -115,7 +118,7 @@ export default function ResultsPanel({
                 {Object.keys(result.allocations).map((ticker) => (
                   <tr key={ticker} className="border-t border-gray-700">
                     <td className="px-4 py-3 text-sm font-semibold text-white">{ticker}</td>
-                    <td className="px-4 py-3 text-sm text-gray-200">{formatPercentWithoutRounding(result.allocations[ticker].weight)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-200">{formatPercentWithoutRounding(result.allocations[ticker].weight * 100)}</td>
                     <td className="px-4 py-3 text-sm text-gray-200">${result.allocations[ticker].allocatedAmount.toLocaleString()}</td>
                   </tr>
                 ))}
