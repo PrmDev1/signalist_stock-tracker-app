@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function PortfolioOptimizerPage() {
-  return <PortfolioOptimizer />;
+  return <PortfolioOptimizer mode="settings" />;
 }

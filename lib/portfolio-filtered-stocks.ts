@@ -3,6 +3,8 @@ export interface FilteredStock {
   name: string;
   sector: string;
   marketCap: number;
+  latestPrice?: number;
+  dayChangePercent?: number;
 }
 
 export const FILTERED_STOCKS_STORAGE_KEY = 'portfolioFilteredStocks';
@@ -13,6 +15,8 @@ function normalizeFilteredStock(stock: FilteredStock): FilteredStock {
     name: stock.name.trim(),
     sector: stock.sector.trim(),
     marketCap: stock.marketCap,
+    latestPrice: stock.latestPrice,
+    dayChangePercent: stock.dayChangePercent,
   };
 }
 

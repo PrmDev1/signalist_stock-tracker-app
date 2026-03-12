@@ -10,6 +10,7 @@ import { POPULAR_STOCK_SYMBOLS } from '@/lib/constants';
 import { cache } from 'react';
 import { connectToDatabase } from '@/database/mongoose';
 import { Portfolio } from '@/database/models/portfolio.model';
+import type { BacktestAndMetrics, EducationalInsights, RiskRewardProfile } from '@/components/portfolio/analysis-types';
 
 const CLOUDFLARE_BASE_URL = process.env.NEXT_PUBLIC_CLOUDFLARE_BASE_URL ;
 const CLOUDFLARE_API_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_API_KEY ?? '';
@@ -65,6 +66,11 @@ interface PortfolioStatusResponse {
     expectedReturn: number;
     volatility: number;
   };
+  explainability?: {
+    educationalInsights?: EducationalInsights;
+    riskRewardProfile?: RiskRewardProfile;
+  };
+  backtestAndMetrics?: BacktestAndMetrics;
 }
 
 export interface SavedPortfolioCardData {
@@ -81,6 +87,8 @@ export interface SavedPortfolioCardData {
 
 export interface SavedPortfolioDetailData extends SavedPortfolioCardData {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
+  monthlyDca?: number;
+  targetYears?: number;
 }
 
 /**
@@ -175,6 +183,11 @@ export async function getPortfolioOptimizationStatus(
     expectedReturn: number;
     volatility: number;
   };
+  explainability?: {
+    educationalInsights?: EducationalInsights;
+    riskRewardProfile?: RiskRewardProfile;
+  };
+  backtestAndMetrics?: BacktestAndMetrics;
   error?: string;
   debugUrl?: string;
 }> {
@@ -191,7 +204,7 @@ export async function getPortfolioOptimizationStatus(
       `${CLOUDFLARE_BASE_URL}/api/v1/portfolio/allocation/${reqId}`
     );
     url.searchParams.append('initialCapital', initialCapital.toString());
-    url.searchParams.append('minOrder', brokerMinOrder.toString());
+    url.searchParams.append('brokerMinOrder', brokerMinOrder.toString());
     
     const urlString = url.toString();
     console.log('[DEBUG] Status check URL:', urlString);
@@ -223,6 +236,8 @@ export async function getPortfolioOptimizationStatus(
       message: data.message,
       modelUsed: data.modelUsed,
       portfolio: data.portfolio,
+      explainability: data.explainability,
+      backtestAndMetrics: data.backtestAndMetrics,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -246,7 +261,9 @@ export async function savePortfolioToDatabase(
   initialCapital: number,
   riskLevel: 'low' | 'medium' | 'high',
   modelName?: 'mvo' | 'semi',
-  mvoId?: string
+  mvoId?: string,
+  monthlyDca: number = 0,
+  targetYears: number = 10
 ): Promise<{
   success: boolean;
   portfolioId?: string;
@@ -267,12 +284,19 @@ export async function savePortfolioToDatabase(
 
     await connectToDatabase();
 
+    const normalizedMonthlyDca = Number.isFinite(monthlyDca) ? Math.max(0, Number(monthlyDca)) : 0;
+    const normalizedTargetYears = Number.isFinite(targetYears)
+      ? Math.min(20, Math.max(1, Number(targetYears)))
+      : 10;
+
     const portfolio = await Portfolio.create({
       userId: session.user.id,
       name: name.trim(),
       tickers: tickers.map((ticker) => ticker.trim().toUpperCase()),
       mvoId: mvoId?.trim() || undefined,
       initialCapital,
+      monthlyDca: normalizedMonthlyDca,
+      targetYears: normalizedTargetYears,
       allocations,
       expectedReturn,
       volatility,
@@ -406,6 +430,8 @@ export async function getSavedPortfolioById(id: string): Promise<{
           (portfolio as any).allocations instanceof Map
             ? Object.fromEntries((portfolio as any).allocations.entries())
             : ((portfolio as any).allocations || {}),
+        monthlyDca: Number((portfolio as any).monthlyDca || 0),
+        targetYears: Number((portfolio as any).targetYears || 10),
       },
     };
   } catch (error) {

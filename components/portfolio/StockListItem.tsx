@@ -8,8 +8,6 @@ interface StockListItemProps {
   stock: CompanyProfile;
   isSelected: boolean;
   onSelect: (ticker: string) => void;
-  price?: number;
-  change?: number;
 }
 
 const GRADIENT_COLORS = [
@@ -30,21 +28,21 @@ const formatPrice = (price: number): string => {
   return `$${price.toFixed(2)}`;
 };
 
-const generateChange = (): number => {
-  return (Math.random() - 0.5) * 10; // Random change between -5% and +5%
-};
-
 export default function StockListItem({
   stock,
   isSelected,
   onSelect,
-  price = Math.random() * 500 + 10,
-  change = generateChange(),
 }: StockListItemProps) {
   const [imgError, setImgError] = React.useState(false);
   const colorIndex = generateColorIndex(stock.ticker);
   const colors = GRADIENT_COLORS[colorIndex];
   const firstLetter = stock.ticker.charAt(0).toUpperCase();
+  const hasPrice = Number.isFinite(stock.latestPrice);
+  const price = hasPrice ? Number(stock.latestPrice) : 0;
+  const change =
+    Number.isFinite(stock.latestPrice) && Number.isFinite(stock.yesterdayPrice) && Number(stock.yesterdayPrice) > 0
+      ? ((Number(stock.latestPrice) - Number(stock.yesterdayPrice)) / Number(stock.yesterdayPrice)) * 100
+      : 0;
   const isPositive = change >= 0;
   const stockImageUrl = `https://financialmodelingprep.com/image-stock/${stock.ticker}.png`;
 
@@ -101,7 +99,7 @@ export default function StockListItem({
       {/* Price & Change - Right Side */}
       <div className="text-right flex-shrink-0 relative z-10">
         <p className="text-sm sm:text-base font-bold text-white group-hover:text-green-400 transition-colors">
-          {formatPrice(price)}
+          {hasPrice ? formatPrice(price) : 'N/A'}
         </p>
         <div className="flex items-center justify-end gap-1 mt-1">
           {isPositive ? (

@@ -17,6 +17,8 @@ export interface CompanyProfile {
   filerSize: string;
   isSmallerReporting: boolean;
   isEmergingGrowth: boolean;
+  latestPrice?: number;
+  yesterdayPrice?: number;
 }
 
 export interface SpecialStatus {

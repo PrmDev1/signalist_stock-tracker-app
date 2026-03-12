@@ -12,9 +12,11 @@ import {
 } from 'recharts';
 
 export interface MonteCarloPaths {
-  optimisticPath: number[];
-  expectedPath: number[];
-  pessimisticPath: number[];
+  optimisticPath?: number[];
+  expectedPath?: number[];
+  pessimisticPath?: number[];
+  spyExpectedPath?: number[];
+  bilExpectedPath?: number[];
 }
 
 export interface ScenarioSummary {
@@ -22,19 +24,21 @@ export interface ScenarioSummary {
   totalInvested: number;
   netProfitOrLoss: number;
   isProfit: boolean;
-  worstDropAlongTheWay_pct: number;
+  worstDropAlongTheWay_pct?: number;
+  worstDropAlongTheWayPct?: number;
 }
 
 export interface MonteCarloResult {
   chartPaths: MonteCarloPaths;
   pathSummaries: {
-    optimisticScenario: ScenarioSummary;
+    optimisticScenario?: ScenarioSummary;
     expectedScenario: ScenarioSummary;
     pessimisticScenario: ScenarioSummary;
   };
   metadata: {
     inflationRate: number;
-    probabilityOfShortfall_pct: number;
+    probabilityOfShortfall_pct?: number;
+    probabilityOfShortfallPct?: number;
   };
 }
 
@@ -73,9 +77,10 @@ type LoadState = 'idle' | 'triggering' | 'processing' | 'completed' | 'error';
 interface ChartPoint {
   step: number;
   year: number;
-  optimistic: number;
   expected: number;
   pessimistic: number;
+  spyExpected: number;
+  bilExpected: number;
 }
 
 const POLL_INTERVAL_MS = 2500;
@@ -97,6 +102,22 @@ function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`;
 }
 
+function readWorstDrop(summary: ScenarioSummary): number {
+  if (typeof summary.worstDropAlongTheWayPct === 'number') {
+    return summary.worstDropAlongTheWayPct;
+  }
+
+  return summary.worstDropAlongTheWay_pct ?? 0;
+}
+
+function readShortfallPct(metadata: MonteCarloResult['metadata']): number {
+  if (typeof metadata.probabilityOfShortfallPct === 'number') {
+    return metadata.probabilityOfShortfallPct;
+  }
+
+  return metadata.probabilityOfShortfall_pct ?? 0;
+}
+
 async function parseJsonOrThrow<T>(res: Response, defaultErrorMessage: string): Promise<T> {
   const contentType = res.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {
@@ -107,17 +128,16 @@ async function parseJsonOrThrow<T>(res: Response, defaultErrorMessage: string): 
   return (await res.json()) as T;
 }
 
-function scenarioColor(name: 'Optimistic' | 'Expected' | 'Pessimistic'): string {
-  if (name === 'Optimistic') return '#10b981';
-  if (name === 'Expected') return '#3b82f6';
-  return '#ef4444';
+function scenarioColor(name: 'Expected' | 'Worst Case'): string {
+  if (name === 'Expected') return '#10b981';
+  return '#f97316';
 }
 
 function ScenarioCard({
   title,
   summary,
 }: {
-  title: 'Optimistic' | 'Expected' | 'Pessimistic';
+  title: 'Expected' | 'Worst Case';
   summary: ScenarioSummary;
 }) {
   const tone = scenarioColor(title);
@@ -151,7 +171,7 @@ function ScenarioCard({
         </div>
         <div className="flex items-center justify-between">
           <span className="text-gray-400">Worst Drawdown</span>
-          <span className="font-medium text-red-300">{formatPercent(summary.worstDropAlongTheWay_pct)}</span>
+          <span className="font-medium text-red-300">{formatPercent(readWorstDrop(summary))}</span>
         </div>
       </div>
     </div>
@@ -164,6 +184,8 @@ export default function MonteCarloProjection({
   monthlyDca = 0,
   investmentHorizon = 10,
 }: MonteCarloProjectionProps) {
+  const selectedYears = Math.min(20, Math.max(1, Math.round(investmentHorizon)));
+  const useMonthAxis = selectedYears === 1;
   const [state, setState] = useState<LoadState>('idle');
   const [message, setMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -261,8 +283,16 @@ export default function MonteCarloProjection({
   const chartData = useMemo(() => {
     if (!monteCarlo) return [] as ChartPoint[];
 
-    const { optimisticPath, expectedPath, pessimisticPath } = monteCarlo.chartPaths;
-    const maxLength = Math.max(optimisticPath.length, expectedPath.length, pessimisticPath.length);
+    const expectedPath = monteCarlo.chartPaths.expectedPath ?? [];
+    const pessimisticPath = monteCarlo.chartPaths.pessimisticPath ?? [];
+    const spyExpectedPath = monteCarlo.chartPaths.spyExpectedPath ?? [];
+    const bilExpectedPath = monteCarlo.chartPaths.bilExpectedPath ?? [];
+    const maxLength = Math.max(
+      expectedPath.length,
+      pessimisticPath.length,
+      spyExpectedPath.length,
+      bilExpectedPath.length
+    );
     const safeHorizon = Math.max(1, investmentHorizon);
     const pointsPerYear = maxLength > 1 ? (maxLength - 1) / safeHorizon : 1;
 
@@ -272,9 +302,10 @@ export default function MonteCarloProjection({
       rows.push({
         step: index,
         year: pointsPerYear > 0 ? index / pointsPerYear : 0,
-        optimistic: optimisticPath[index] ?? optimisticPath[optimisticPath.length - 1] ?? 0,
         expected: expectedPath[index] ?? expectedPath[expectedPath.length - 1] ?? 0,
         pessimistic: pessimisticPath[index] ?? pessimisticPath[pessimisticPath.length - 1] ?? 0,
+        spyExpected: spyExpectedPath[index] ?? spyExpectedPath[spyExpectedPath.length - 1] ?? 0,
+        bilExpected: bilExpectedPath[index] ?? bilExpectedPath[bilExpectedPath.length - 1] ?? 0,
       });
     }
 
@@ -285,6 +316,14 @@ export default function MonteCarloProjection({
     if (!chartData.length) return [] as number[];
 
     const maxStep = chartData[chartData.length - 1]?.step ?? 0;
+    if (useMonthAxis) {
+      const ticks: number[] = [];
+      for (let month = 0; month <= 12; month += 1) {
+        ticks.push(Math.round((month / 12) * maxStep));
+      }
+      return ticks;
+    }
+
     const safeHorizon = Math.max(1, investmentHorizon);
     const pointsPerYear = maxStep > 0 ? maxStep / safeHorizon : 1;
     const ticks: number[] = [];
@@ -294,19 +333,23 @@ export default function MonteCarloProjection({
     }
 
     return ticks;
-  }, [chartData, investmentHorizon]);
+  }, [chartData, investmentHorizon, useMonthAxis]);
 
   const overviewStats = useMemo(() => {
     if (!monteCarlo) return null;
 
     const expected = monteCarlo.pathSummaries.expectedScenario;
-    const optimistic = monteCarlo.pathSummaries.optimisticScenario;
+    const pessimistic = monteCarlo.pathSummaries.pessimisticScenario;
+    const spyFinal = (monteCarlo.chartPaths.spyExpectedPath ?? []).at(-1) ?? 0;
+    const bilFinal = (monteCarlo.chartPaths.bilExpectedPath ?? []).at(-1) ?? 0;
 
     return {
       expectedFinal: expected.finalValue,
       expectedProfit: expected.netProfitOrLoss,
-      shortfall: monteCarlo.metadata.probabilityOfShortfall_pct,
-      bestFinal: optimistic.finalValue,
+      worstFinal: pessimistic.finalValue,
+      shortfall: readShortfallPct(monteCarlo.metadata),
+      spyFinal,
+      bilFinal,
     };
   }, [monteCarlo]);
 
@@ -316,7 +359,7 @@ export default function MonteCarloProjection({
         <div className="space-y-1">
           <p className="text-[11px] uppercase tracking-[0.16em] text-teal-300/80">Portfolio Intelligence</p>
           <h3 className="text-xl font-semibold text-white sm:text-2xl">Investment Projection</h3>
-          <p className="text-sm text-gray-400">Monte Carlo Simulation ({Math.max(5, investmentHorizon)}-{Math.max(20, investmentHorizon)} Years)</p>
+          <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} Years)</p>
         </div>
 
         <button
@@ -342,12 +385,13 @@ export default function MonteCarloProjection({
             </p>
           </div>
           <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Best Case Final Value</p>
-            <p className="mt-1.5 text-lg font-semibold text-teal-300">{formatCurrency(overviewStats.bestFinal)}</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Worst Case Final Value</p>
+            <p className="mt-1.5 text-lg font-semibold text-orange-300">{formatCurrency(overviewStats.worstFinal)}</p>
           </div>
           <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Probability Of Shortfall</p>
-            <p className="mt-1.5 text-lg font-semibold text-red-300">{formatPercent(overviewStats.shortfall)}</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">SPY / BIL Final Value</p>
+            <p className="mt-1.5 text-sm font-semibold text-blue-300">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
+            <p className="mt-1 text-sm font-semibold text-sky-300">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
           </div>
         </div>
       ) : null}
@@ -382,10 +426,14 @@ export default function MonteCarloProjection({
                 tickLine={false}
                 tickFormatter={(step) => {
                   const maxStep = chartData[chartData.length - 1]?.step ?? 1;
+                  if (useMonthAxis) {
+                    const monthValue = (Number(step) / Math.max(1, maxStep)) * 12;
+                    return `${Math.round(monthValue)}`;
+                  }
                   const yearValue = (Number(step) / Math.max(1, maxStep)) * Math.max(1, investmentHorizon);
                   return `${Math.round(yearValue)}`;
                 }}
-                label={{ value: 'Years', position: 'insideBottom', offset: -8, fill: '#9095A1' }}
+                label={{ value: useMonthAxis ? 'Months' : 'Years', position: 'insideBottom', offset: -8, fill: '#9095A1' }}
               />
               <YAxis
                 tick={{ fill: '#CCDADC', fontSize: 12 }}
@@ -404,14 +452,27 @@ export default function MonteCarloProjection({
                 }}
                 labelFormatter={(label) => {
                   const maxStep = chartData[chartData.length - 1]?.step ?? 1;
+                  if (useMonthAxis) {
+                    const monthValue = (Number(label) / Math.max(1, maxStep)) * 12;
+                    return `Month ${monthValue.toFixed(1)}`;
+                  }
                   const yearValue = (Number(label) / Math.max(1, maxStep)) * Math.max(1, investmentHorizon);
                   return `Year ${yearValue.toFixed(1)}`;
                 }}
                 formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name)]}
               />
-              <Line type="monotone" dataKey="optimistic" name="Optimistic" stroke="#10b981" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="expected" name="Expected" stroke="#3b82f6" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="pessimistic" name="Pessimistic" stroke="#ef4444" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="expected" name="Portfolio Expected" stroke="#10b981" strokeWidth={3} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="pessimistic"
+                name="Portfolio Worst Case"
+                stroke="#f97316"
+                strokeWidth={3}
+                dot={false}
+                strokeDasharray="6 4"
+              />
+              <Line type="monotone" dataKey="spyExpected" name="SPY Expected" stroke="#3b82f6" strokeWidth={2.6} dot={false} />
+              <Line type="monotone" dataKey="bilExpected" name="BIL Expected" stroke="#7dd3fc" strokeWidth={2.6} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -422,37 +483,40 @@ export default function MonteCarloProjection({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl border border-gray-700/60 bg-gray-900/60 px-3 py-2">
-        <div className="inline-flex items-center gap-2 text-lg font-medium text-blue-400">
+        <div className="inline-flex items-center gap-2 text-base font-medium text-emerald-400">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          <span>Portfolio Expected</span>
+        </div>
+        <div className="inline-flex items-center gap-2 text-base font-medium text-orange-400">
+          <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
+          <span>Worst Case</span>
+        </div>
+        <div className="inline-flex items-center gap-2 text-base font-medium text-blue-400">
           <span className="h-2.5 w-2.5 rounded-full bg-blue-400" />
-          <span>Expected</span>
+          <span>SPY</span>
         </div>
-        <div className="inline-flex items-center gap-2 text-lg font-medium text-teal-400">
-          <span className="h-2.5 w-2.5 rounded-full bg-teal-400" />
-          <span>Optimistic</span>
-        </div>
-        <div className="inline-flex items-center gap-2 text-lg font-medium text-red-400">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-          <span>Pessimistic</span>
+        <div className="inline-flex items-center gap-2 text-base font-medium text-sky-300">
+          <span className="h-2.5 w-2.5 rounded-full bg-sky-300" />
+          <span>BIL (Deposit Benchmark)</span>
         </div>
       </div>
 
       <p className="mt-2 text-xs text-gray-500">
-        X-axis is converted from simulation steps to years based on selected horizon ({investmentHorizon} years).
+        X-axis is converted from simulation steps to {useMonthAxis ? 'months' : 'years'} based on selected horizon ({selectedYears} {selectedYears === 1 ? 'year' : 'years'}).
       </p>
 
       {monteCarlo ? (
         <>
-          <div className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <ScenarioCard title="Optimistic" summary={monteCarlo.pathSummaries.optimisticScenario} />
+          <div className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-2">
             <ScenarioCard title="Expected" summary={monteCarlo.pathSummaries.expectedScenario} />
-            <ScenarioCard title="Pessimistic" summary={monteCarlo.pathSummaries.pessimisticScenario} />
+            <ScenarioCard title="Worst Case" summary={monteCarlo.pathSummaries.pessimisticScenario} />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-500">Risk Indicator</p>
               <p className="mt-2 text-lg font-semibold text-red-300">
-                Probability Of Shortfall: {formatPercent(monteCarlo.metadata.probabilityOfShortfall_pct)}
+                Probability Of Shortfall: {formatPercent(readShortfallPct(monteCarlo.metadata))}
               </p>
               <p className="mt-1 text-xs text-gray-400">Higher value means a greater chance to end below target return.</p>
             </div>

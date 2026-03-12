@@ -6,6 +6,8 @@ export interface PortfolioItem extends Document {
   tickers: string[];
   mvoId?: string;
   initialCapital?: number;
+  monthlyDca?: number;
+  targetYears?: number;
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   expectedReturn: number;
   volatility: number;
@@ -30,6 +32,8 @@ const PortfolioSchema = new Schema<PortfolioItem>(
     tickers: [{ type: String, required: true, uppercase: true, trim: true }],
     mvoId: { type: String, required: false, trim: true },
     initialCapital: { type: Number, required: false },
+    monthlyDca: { type: Number, required: false, default: 0, min: 0 },
+    targetYears: { type: Number, required: false, default: 10, min: 1, max: 20 },
     allocations: {
       type: Map,
       of: AllocationSchema,

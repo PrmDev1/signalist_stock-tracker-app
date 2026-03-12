@@ -1,22 +1,21 @@
 import type { ParameterPanelProps, RiskTolerance } from './types';
+import InfoPopover from '@/components/portfolio/optimizer/InfoPopover';
 
 export default function ParameterPanel({
   investmentAmount,
   setInvestmentAmount,
+  monthlyDca,
+  setMonthlyDca,
+  targetYears,
+  setTargetYears,
   riskTolerance,
   setRiskTolerance,
   investmentHorizon,
   setInvestmentHorizon,
-  rebalancingFrequency,
-  setRebalancingFrequency,
   modelName,
   setModelName,
   brokerMinOrder,
   setBrokerMinOrder,
-  maxAllocationPerStock,
-  setMaxAllocationPerStock,
-  returnPriority,
-  setReturnPriority,
   requireDiversification,
   setRequireDiversification,
   lookbackYears,
@@ -29,12 +28,14 @@ export default function ParameterPanel({
 }: ParameterPanelProps) {
   return (
     <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
-      <h2 className="text-lg font-semibold text-white sm:text-xl">Optimization Parameters</h2>
-      <p className="mt-1 text-sm text-gray-400">Adjust your preferences and constraints before optimization.</p>
+      <h2 className="text-lg font-semibold text-white sm:text-xl">พารามิเตอร์การจัดพอร์ต</h2>
+      <p className="mt-1 text-sm text-gray-400">ตั้งค่าที่จำเป็นก่อนเริ่มให้ AI คำนวณพอร์ต</p>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label htmlFor="investmentAmount" className="mb-1 block text-sm font-medium text-gray-300">Investment Amount (USD)</label>
+          <label htmlFor="investmentAmount" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            เงินลงทุนตั้งต้น (USD)
+          </label>
           <input
             id="investmentAmount"
             type="number"
@@ -43,19 +44,56 @@ export default function ParameterPanel({
             onChange={(e) => setInvestmentAmount(Number(e.target.value))}
             className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder:text-gray-500 focus:border-blue-600 focus:outline-none"
           />
-          <p className="mt-1 text-xs text-gray-500">Total capital to allocate across selected stocks.</p>
+        </div>
+
+        <div>
+          <label htmlFor="monthlyDca" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            เงินลงทุนรายเดือน (Monthly DCA) (USD)
+          </label>
+          <input
+            id="monthlyDca"
+            type="number"
+            min={0}
+            value={monthlyDca}
+            onChange={(e) => setMonthlyDca(Math.max(0, Number(e.target.value) || 0))}
+            className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder:text-gray-500 focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="targetYears" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            จำนวนปีเป้าหมาย (ไม่เกิน 20 ปี)
+          </label>
+          <input
+            id="targetYears"
+            type="number"
+            min={1}
+            max={20}
+            value={targetYears}
+            onChange={(e) => {
+              const nextValue = Number(e.target.value) || 1;
+              setTargetYears(Math.min(20, Math.max(1, nextValue)));
+            }}
+            className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder:text-gray-500 focus:border-blue-600 focus:outline-none"
+          />
         </div>
 
         <div className="md:col-span-2">
-          <p className="mb-2 text-sm font-medium text-gray-300">Risk Tolerance</p>
+          <p className="mb-2 flex items-center text-sm font-medium text-gray-300">
+            ระดับความเสี่ยง
+          </p>
           <div className="grid grid-cols-3 gap-2">
-            {(['low', 'medium', 'high'] as RiskTolerance[]).map((risk) => {
-              const active = riskTolerance === risk;
+            {([
+              { key: 'low', label: 'ต่ำ' },
+              { key: 'medium', label: 'กลาง' },
+              { key: 'high', label: 'สูง' },
+            ] as { key: RiskTolerance; label: string }[]).map((risk) => {
+              const active = riskTolerance === risk.key;
               return (
                 <button
-                  key={risk}
+                  key={risk.key}
                   type="button"
-                  onClick={() => setRiskTolerance(risk)}
+                  onClick={() => setRiskTolerance(risk.key)}
                   aria-pressed={active}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     active
@@ -63,7 +101,7 @@ export default function ParameterPanel({
                       : 'border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {risk.charAt(0).toUpperCase() + risk.slice(1)}
+                  {risk.label}
                 </button>
               );
             })}
@@ -71,37 +109,27 @@ export default function ParameterPanel({
         </div>
 
         <div>
-          <label htmlFor="investmentHorizon" className="mb-1 block text-sm font-medium text-gray-300">Investment Horizon</label>
+          <label htmlFor="investmentHorizon" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            ระยะเวลาลงทุน
+          </label>
           <select
             id="investmentHorizon"
             value={investmentHorizon}
             onChange={(e) => setInvestmentHorizon(e.target.value as typeof investmentHorizon)}
             className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-600 focus:outline-none"
           >
-            <option value="short">Short Term</option>
-            <option value="medium">Medium Term</option>
-            <option value="long">Long Term</option>
+            <option value="short">สั้น</option>
+            <option value="medium">กลาง</option>
+            <option value="long">ยาว</option>
           </select>
-          <p className="mt-1 text-xs text-gray-500">Lookback period is auto-set to {lookbackYears} years.</p>
+          <p className="mt-1 text-xs text-gray-500">ระบบใช้ข้อมูลย้อนหลัง {lookbackYears} ปี</p>
         </div>
 
         <div>
-          <label htmlFor="rebalancingFrequency" className="mb-1 block text-sm font-medium text-gray-300">Rebalancing Frequency</label>
-          <select
-            id="rebalancingFrequency"
-            value={rebalancingFrequency}
-            onChange={(e) => setRebalancingFrequency(e.target.value as typeof rebalancingFrequency)}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-600 focus:outline-none"
-          >
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="semiannual">Semi-Annual</option>
-            <option value="annual">Annual</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="modelName" className="mb-1 block text-sm font-medium text-gray-300">Optimization Model</label>
+          <label htmlFor="modelName" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            โมเดลที่ใช้จัดพอร์ต
+            <InfoPopover title="โมเดลจัดพอร์ต" description="MVO เหมาะกับการบาลานซ์ผลตอบแทน/ความผันผวน ส่วน Semi เหมาะกับผู้ที่เน้นลดความเสี่ยงขาลง" />
+          </label>
           <select
             id="modelName"
             value={modelName}
@@ -114,7 +142,10 @@ export default function ParameterPanel({
         </div>
 
         <div>
-          <label htmlFor="brokerMinOrder" className="mb-1 block text-sm font-medium text-gray-300">Broker Min. Order (USD)</label>
+          <label htmlFor="brokerMinOrder" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            มูลค่าขั้นต่ำต่อคำสั่งซื้อ (USD)
+            <InfoPopover title="คำสั่งซื้อขั้นต่ำ" description="ใช้ตรวจสอบว่าจำนวนเงินที่จัดให้แต่ละหุ้นไม่ต่ำกว่าขั้นต่ำของโบรกเกอร์" />
+          </label>
           <input
             id="brokerMinOrder"
             type="number"
@@ -126,39 +157,6 @@ export default function ParameterPanel({
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="maxAllocationPerStock" className="mb-1 block text-sm font-medium text-gray-300">
-            Max Allocation per Stock ({maxAllocationPerStock}%)
-          </label>
-          <input
-            id="maxAllocationPerStock"
-            type="range"
-            min={5}
-            max={100}
-            step={1}
-            value={maxAllocationPerStock}
-            onChange={(e) => setMaxAllocationPerStock(Number(e.target.value))}
-            className="w-full"
-          />
-          <p className="mt-1 text-xs text-gray-500">Constraint parameter for concentration control.</p>
-        </div>
-
-        <div className="md:col-span-2">
-          <label htmlFor="returnPriority" className="mb-1 block text-sm font-medium text-gray-300">
-            Expected Return Priority vs Risk Priority ({returnPriority}% return)
-          </label>
-          <input
-            id="returnPriority"
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={returnPriority}
-            onChange={(e) => setReturnPriority(Number(e.target.value))}
-            className="w-full"
-          />
-        </div>
-
-        <div className="md:col-span-2">
           <label className="inline-flex items-center gap-2 rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-gray-300">
             <input
               type="checkbox"
@@ -166,7 +164,8 @@ export default function ParameterPanel({
               onChange={(e) => setRequireDiversification(e.target.checked)}
               className="h-4 w-4"
             />
-            Require diversification guard
+            เปิดการกระจายความเสี่ยง
+            <InfoPopover title="การกระจายความเสี่ยง" description="ช่วยลดโอกาสที่พอร์ตกระจุกตัวในหุ้นไม่กี่ตัว" />
           </label>
         </div>
       </div>
@@ -177,25 +176,25 @@ export default function ParameterPanel({
           disabled={status === 'PROCESSING' || !canRunOptimization}
           className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
-          {status === 'PROCESSING' ? 'Optimizing...' : 'Optimize Portfolio'}
+          {status === 'PROCESSING' ? 'กำลังคำนวณพอร์ต...' : 'เริ่มจัดพอร์ตด้วย AI'}
         </button>
         <button
           onClick={onReset}
           type="button"
           className="rounded-lg border border-gray-600 bg-gray-700 px-5 py-2.5 text-sm font-semibold text-gray-200 transition-colors hover:bg-gray-600"
         >
-          Reset Parameters
+          รีเซ็ตค่า
         </button>
         <button
           type="button"
           onClick={onBack}
           className="rounded-lg border border-gray-600 bg-transparent px-5 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700"
         >
-          Back to Filter Page
+          กลับหน้าคัดกรองหุ้น
         </button>
       </div>
 
-      {statusMessage && <p className="mt-3 text-sm text-gray-400">{statusMessage}</p>}
+      {statusMessage ? <p className="mt-3 text-sm text-gray-400">{statusMessage}</p> : null}
     </section>
   );
 }

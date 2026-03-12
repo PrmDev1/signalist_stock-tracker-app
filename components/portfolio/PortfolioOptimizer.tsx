@@ -9,25 +9,36 @@ import {
   getFilteredStocksFromSession,
   setFilteredStocksInSession,
 } from '@/lib/portfolio-filtered-stocks';
-import ParameterPanel from '@/components/portfolio/optimizer/ParameterPanel';
-import PreviewPanel from '@/components/portfolio/optimizer/PreviewPanel';
-import ResultsPanel from '@/components/portfolio/optimizer/ResultsPanel';
+import {
+  getOptimizerParamsFromSession,
+  setOptimizerParamsInSession,
+} from '@/lib/portfolio-optimizer-params';
+import ParameterPanel from './optimizer/ParameterPanel';
+import PreviewPanel from './optimizer/PreviewPanel';
+import ResultsPanel from './optimizer/ResultsPanel';
 import type {
   InvestmentHorizon,
   PortfolioResult,
-  RebalancingFrequency,
   RiskTolerance,
 } from '@/components/portfolio/optimizer/types';
+import type {
+  BacktestAndMetrics,
+  EducationalInsights,
+  RiskRewardProfile,
+} from '@/components/portfolio/analysis-types';
 
-export default function PortfolioOptimizer() {
+interface PortfolioOptimizerProps {
+  mode?: 'settings' | 'results';
+}
+
+export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptimizerProps) {
   const router = useRouter();
   const [selectedStocks, setSelectedStocks] = useState<FilteredStock[]>([]);
   const [isSelectionReady, setIsSelectionReady] = useState(false);
   const [investmentAmount, setInvestmentAmount] = useState<number>(10000);
+  const [monthlyDca, setMonthlyDca] = useState<number>(0);
+  const [targetYears, setTargetYears] = useState<number>(10);
   const [investmentHorizon, setInvestmentHorizon] = useState<InvestmentHorizon>('medium');
-  const [maxAllocationPerStock, setMaxAllocationPerStock] = useState<number>(35);
-  const [returnPriority, setReturnPriority] = useState<number>(55);
-  const [rebalancingFrequency, setRebalancingFrequency] = useState<RebalancingFrequency>('quarterly');
   const [brokerMinOrder, setBrokerMinOrder] = useState<number>(5);
   const [riskTolerance, setRiskTolerance] = useState<RiskTolerance>('medium');
   const optimizedRiskLevelRef = useRef<RiskTolerance>('medium');
@@ -41,6 +52,11 @@ export default function PortfolioOptimizer() {
   const [isSaving, setIsSaving] = useState(false);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [backtestAndMetrics, setBacktestAndMetrics] = useState<BacktestAndMetrics | null>(null);
+  const [educationalInsights, setEducationalInsights] = useState<EducationalInsights | null>(null);
+  const [riskRewardProfile, setRiskRewardProfile] = useState<RiskRewardProfile | null>(null);
+  const hasAutoStartedRef = useRef(false);
+  const [isResultParamsReady, setIsResultParamsReady] = useState(mode === 'settings');
 
   const canCreatePortfolio = selectedStocks.length >= 2;
 
@@ -54,9 +70,11 @@ export default function PortfolioOptimizer() {
     canCreatePortfolio &&
     Number.isFinite(investmentAmount) &&
     investmentAmount > 0 &&
-    Number.isFinite(maxAllocationPerStock) &&
-    maxAllocationPerStock > 0 &&
-    maxAllocationPerStock <= 100;
+    Number.isFinite(monthlyDca) &&
+    monthlyDca >= 0 &&
+    Number.isFinite(targetYears) &&
+    targetYears >= 1 &&
+    targetYears <= 20;
 
   useEffect(() => {
     const stocksFromFilter = getFilteredStocksFromSession();
@@ -70,6 +88,26 @@ export default function PortfolioOptimizer() {
     setIsSelectionReady(true);
   }, [router]);
 
+  useEffect(() => {
+    if (mode !== 'results' || !isSelectionReady) return;
+
+    const params = getOptimizerParamsFromSession();
+    if (!params) {
+      router.replace('/portfolio/optimizer');
+      return;
+    }
+
+    setInvestmentAmount(params.investmentAmount);
+    setMonthlyDca(params.monthlyDca);
+    setTargetYears(params.targetYears);
+    setRiskTolerance(params.riskTolerance);
+    setInvestmentHorizon(params.investmentHorizon);
+    setModelName(params.modelName);
+    setBrokerMinOrder(params.brokerMinOrder);
+    setRequireDiversification(params.requireDiversification);
+    setIsResultParamsReady(true);
+  }, [isSelectionReady, mode, router]);
+
   const handleOptimize = async () => {
     if (selectedStocks.length === 0) {
       router.replace('/portfolio/select-stocks');
@@ -77,13 +115,13 @@ export default function PortfolioOptimizer() {
     }
 
     if (!canCreatePortfolio) {
-      setErrorMsg('Please select at least 2 stocks before running optimization.');
+      setErrorMsg('กรุณาเลือกหุ้นอย่างน้อย 2 ตัวก่อนเริ่มจัดพอร์ต');
       setStatus('FAILED');
       return;
     }
 
     if (!canRunOptimization) {
-      setErrorMsg('Please review parameters before running optimization.');
+      setErrorMsg('กรุณาตรวจสอบพารามิเตอร์ก่อนเริ่มจัดพอร์ต');
       setStatus('FAILED');
       return;
     }
@@ -93,7 +131,10 @@ export default function PortfolioOptimizer() {
     setReqId(null);
     setErrorMsg(null);
     setModelUsed(null);
-    setStatusMessage(`Preparing ${selectedStocks.length} assets • ${rebalancingFrequency} rebalance • max ${maxAllocationPerStock}% per stock`);
+    setBacktestAndMetrics(null);
+    setEducationalInsights(null);
+    setRiskRewardProfile(null);
+    setStatusMessage(`กำลังเตรียมหุ้น ${selectedStocks.length} ตัวสำหรับการจัดพอร์ต`);
 
     const tickers = selectedStocks.map((stock) => stock.symbol.toUpperCase());
     const selectedRiskLevel = riskTolerance;
@@ -111,7 +152,7 @@ export default function PortfolioOptimizer() {
       );
 
       if (!response.success) {
-        setErrorMsg(response.error || 'Failed to start optimization');
+        setErrorMsg(response.error || 'ไม่สามารถเริ่มจัดพอร์ตได้');
         setStatus('FAILED');
         return;
       }
@@ -119,9 +160,45 @@ export default function PortfolioOptimizer() {
       setReqId(response.reqId || null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setErrorMsg('Error: Failed to start optimization. ' + errorMessage);
+      setErrorMsg('เกิดข้อผิดพลาด: เริ่มจัดพอร์ตไม่สำเร็จ ' + errorMessage);
       setStatus('FAILED');
     }
+  };
+
+  useEffect(() => {
+    if (mode !== 'results') return;
+    if (!isSelectionReady || !isResultParamsReady) return;
+    if (hasAutoStartedRef.current) return;
+
+    hasAutoStartedRef.current = true;
+    void handleOptimize();
+  }, [isResultParamsReady, isSelectionReady, mode]);
+
+  const handleGoToResultsPage = () => {
+    if (!canCreatePortfolio) {
+      setErrorMsg('กรุณาเลือกหุ้นอย่างน้อย 2 ตัวก่อนเริ่มจัดพอร์ต');
+      setStatus('FAILED');
+      return;
+    }
+
+    if (!canRunOptimization) {
+      setErrorMsg('กรุณาตรวจสอบพารามิเตอร์ก่อนเริ่มจัดพอร์ต');
+      setStatus('FAILED');
+      return;
+    }
+
+    setOptimizerParamsInSession({
+      investmentAmount,
+      monthlyDca,
+      targetYears,
+      riskTolerance,
+      investmentHorizon,
+      modelName,
+      brokerMinOrder,
+      requireDiversification,
+    });
+
+    router.push('/portfolio/optimizer/start');
   };
 
   useEffect(() => {
@@ -134,7 +211,7 @@ export default function PortfolioOptimizer() {
         const response = await getPortfolioOptimizationStatus(reqId, investmentAmount, brokerMinOrder);
 
         if (!response.success) {
-          setErrorMsg('Error checking status: ' + response.error);
+          setErrorMsg('ตรวจสอบสถานะไม่สำเร็จ: ' + response.error);
           setStatus('FAILED');
           return;
         }
@@ -142,18 +219,21 @@ export default function PortfolioOptimizer() {
         if (response.status === 'PORTFOLIO_READY' && response.portfolio) {
           setResult(response.portfolio);
           setModelUsed(response.modelUsed || null);
+          setBacktestAndMetrics(response.backtestAndMetrics || null);
+          setEducationalInsights(response.explainability?.educationalInsights || null);
+          setRiskRewardProfile(response.explainability?.riskRewardProfile || null);
           setStatusMessage(response.message || null);
           setStatus('READY');
         } else if (response.status === 'FAILED') {
           setStatus('FAILED');
-          setStatusMessage(response.message || 'Portfolio optimization failed');
-          setErrorMsg(response.message || 'Portfolio optimization failed');
+          setStatusMessage(response.message || 'การจัดพอร์ตล้มเหลว');
+          setErrorMsg(response.message || 'การจัดพอร์ตล้มเหลว');
         } else if (response.status === 'PROCESSING') {
-          setStatusMessage(response.message || 'Optimizing...');
+          setStatusMessage(response.message || 'กำลังประมวลผล...');
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        setErrorMsg('Error checking status: ' + errorMessage);
+        setErrorMsg('ตรวจสอบสถานะไม่สำเร็จ: ' + errorMessage);
       }
     };
 
@@ -166,10 +246,9 @@ export default function PortfolioOptimizer() {
 
   const handleResetParameters = () => {
     setInvestmentAmount(10000);
+    setMonthlyDca(0);
+    setTargetYears(10);
     setInvestmentHorizon('medium');
-    setMaxAllocationPerStock(35);
-    setReturnPriority(55);
-    setRebalancingFrequency('quarterly');
     setBrokerMinOrder(5);
     setRiskTolerance('medium');
     setRequireDiversification(true);
@@ -179,13 +258,16 @@ export default function PortfolioOptimizer() {
     setStatusMessage(null);
     setResult(null);
     setReqId(null);
+    setBacktestAndMetrics(null);
+    setEducationalInsights(null);
+    setRiskRewardProfile(null);
   };
 
   const handleSavePortfolio = async () => {
     if (!result || selectedStocks.length === 0) return;
 
     if (!canCreatePortfolio) {
-      setErrorMsg('Cannot create portfolio with fewer than 2 stocks. Please go back and select more stocks.');
+      setErrorMsg('ไม่สามารถสร้างพอร์ตได้ เพราะมีหุ้นน้อยกว่า 2 ตัว กรุณากลับไปเลือกหุ้นเพิ่ม');
       setStatus('FAILED');
       return;
     }
@@ -205,7 +287,9 @@ export default function PortfolioOptimizer() {
         investmentAmount,
         optimizedRiskLevelRef.current,
         modelName,
-        reqId || undefined
+        reqId || undefined,
+        monthlyDca,
+        targetYears
       );
 
       if (response.success) {
@@ -216,12 +300,15 @@ export default function PortfolioOptimizer() {
         setResult(null);
         setModelUsed(null);
         setStatusMessage(null);
+        setBacktestAndMetrics(null);
+        setEducationalInsights(null);
+        setRiskRewardProfile(null);
       } else {
-        setErrorMsg('Failed to save portfolio: ' + response.error);
+        setErrorMsg('บันทึกพอร์ตไม่สำเร็จ: ' + response.error);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setErrorMsg('Error: Failed to save portfolio. ' + errorMessage);
+      setErrorMsg('เกิดข้อผิดพลาด: บันทึกพอร์ตไม่สำเร็จ ' + errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -239,12 +326,16 @@ export default function PortfolioOptimizer() {
 
     if (nextStocks.length < 2) {
       setStatus('FAILED');
-      setErrorMsg('At least 2 stocks are required to create and optimize a portfolio.');
+      setErrorMsg('ต้องมีหุ้นอย่างน้อย 2 ตัว เพื่อสร้างและจัดพอร์ต');
     }
   };
 
   if (!isSelectionReady) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-300">Loading filtered stocks...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-gray-300">กำลังโหลดรายการหุ้น...</div>;
+  }
+
+  if (mode === 'results' && !isResultParamsReady) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-300">กำลังโหลดพารามิเตอร์...</div>;
   }
 
   return (
@@ -253,80 +344,84 @@ export default function PortfolioOptimizer() {
         <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
           <button
             type="button"
-            onClick={() => router.push('/portfolio/select-stocks')}
+            onClick={() => router.push(mode === 'results' ? '/portfolio/optimizer' : '/portfolio/select-stocks')}
             className="mb-4 inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-600"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Stock Filter
+            {mode === 'results' ? 'กลับไปหน้า Parameter' : 'กลับไปหน้าคัดกรองหุ้น'}
           </button>
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">AI Portfolio Optimizer</h1>
+          <h1 className="text-3xl font-bold text-white sm:text-4xl">
+            {mode === 'results' ? 'ผลลัพธ์การจัดพอร์ตด้วย AI' : 'AI จัดพอร์ตอัจฉริยะ'}
+          </h1>
           <p className="mt-2 text-sm text-gray-400 sm:text-base">
-            Configure inputs, review selected assets, and generate an AI-optimized portfolio allocation.
+            {mode === 'results'
+              ? 'หน้านี้แสดงเฉพาะสถานะและผลลัพธ์การจัดพอร์ต'
+              : 'ตั้งค่าพารามิเตอร์ก่อน แล้วกดเริ่มเพื่อไปหน้าผลลัพธ์'}
           </p>
           <div className="mt-4 inline-flex items-center rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs font-medium text-teal-400 sm:text-sm">
-            {selectedStocks.length} selected stock{selectedStocks.length !== 1 ? 's' : ''}
+            เลือกแล้ว {selectedStocks.length} ตัว
           </div>
         </section>
 
         {!canCreatePortfolio && (
           <section className="rounded-xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-3 text-yellow-300">
-            <p className="font-semibold">At least 2 stocks are required</p>
-            <p className="text-sm">You currently have {selectedStocks.length} selected stock. Please add at least one more stock.</p>
+            <p className="font-semibold">ต้องมีหุ้นอย่างน้อย 2 ตัว</p>
+            <p className="text-sm">ตอนนี้คุณเลือกไว้ {selectedStocks.length} ตัว กรุณาเพิ่มอย่างน้อยอีก 1 ตัว</p>
           </section>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_1fr]">
-          <ParameterPanel
-            investmentAmount={investmentAmount}
-            setInvestmentAmount={setInvestmentAmount}
-            riskTolerance={riskTolerance}
-            setRiskTolerance={setRiskTolerance}
-            investmentHorizon={investmentHorizon}
-            setInvestmentHorizon={setInvestmentHorizon}
-            rebalancingFrequency={rebalancingFrequency}
-            setRebalancingFrequency={setRebalancingFrequency}
-            modelName={modelName}
-            setModelName={setModelName}
-            brokerMinOrder={brokerMinOrder}
-            setBrokerMinOrder={setBrokerMinOrder}
-            maxAllocationPerStock={maxAllocationPerStock}
-            setMaxAllocationPerStock={setMaxAllocationPerStock}
-            returnPriority={returnPriority}
-            setReturnPriority={setReturnPriority}
-            requireDiversification={requireDiversification}
-            setRequireDiversification={setRequireDiversification}
-            lookbackYears={lookbackYears}
+        {mode === 'settings' ? (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_1fr]">
+            <ParameterPanel
+              investmentAmount={investmentAmount}
+              setInvestmentAmount={setInvestmentAmount}
+              monthlyDca={monthlyDca}
+              setMonthlyDca={setMonthlyDca}
+              targetYears={targetYears}
+              setTargetYears={setTargetYears}
+              riskTolerance={riskTolerance}
+              setRiskTolerance={setRiskTolerance}
+              investmentHorizon={investmentHorizon}
+              setInvestmentHorizon={setInvestmentHorizon}
+              modelName={modelName}
+              setModelName={setModelName}
+              brokerMinOrder={brokerMinOrder}
+              setBrokerMinOrder={setBrokerMinOrder}
+              requireDiversification={requireDiversification}
+              setRequireDiversification={setRequireDiversification}
+              lookbackYears={lookbackYears}
+              status={status}
+              statusMessage={statusMessage}
+              canRunOptimization={canRunOptimization}
+              onOptimize={handleGoToResultsPage}
+              onReset={handleResetParameters}
+              onBack={() => router.push('/portfolio/select-stocks')}
+            />
+
+            <PreviewPanel
+              selectedStocks={selectedStocks}
+              riskTolerance={riskTolerance}
+              investmentHorizon={investmentHorizon}
+              onRemoveStock={handleRemoveStock}
+            />
+          </div>
+        ) : (
+          <ResultsPanel
             status={status}
-            statusMessage={statusMessage}
-            canRunOptimization={canRunOptimization}
-            onOptimize={handleOptimize}
-            onReset={handleResetParameters}
-            onBack={() => router.push('/portfolio/select-stocks')}
+            errorMsg={errorMsg}
+            reqId={reqId}
+            result={result}
+            modelUsed={modelUsed}
+            backtestAndMetrics={backtestAndMetrics}
+            educationalInsights={educationalInsights}
+            riskRewardProfile={riskRewardProfile}
+            portfolioName={portfolioName}
+            setPortfolioName={setPortfolioName}
+            onSavePortfolio={handleSavePortfolio}
+            isSaving={isSaving}
+            canCreatePortfolio={canCreatePortfolio}
           />
-
-          <PreviewPanel
-            selectedStocks={selectedStocks}
-            riskTolerance={riskTolerance}
-            investmentHorizon={investmentHorizon}
-            returnPriority={returnPriority}
-            rebalancingFrequency={rebalancingFrequency}
-            maxAllocationPerStock={maxAllocationPerStock}
-            onRemoveStock={handleRemoveStock}
-          />
-        </div>
-
-        <ResultsPanel
-          status={status}
-          errorMsg={errorMsg}
-          reqId={reqId}
-          result={result}
-          modelUsed={modelUsed}
-          portfolioName={portfolioName}
-          setPortfolioName={setPortfolioName}
-          onSavePortfolio={handleSavePortfolio}
-          isSaving={isSaving}
-          canCreatePortfolio={canCreatePortfolio}
-        />
+        )}
       </div>
     </div>
   );

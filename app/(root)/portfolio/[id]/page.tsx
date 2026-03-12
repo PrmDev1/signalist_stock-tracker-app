@@ -96,6 +96,8 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
     Number(portfolio.initialCapital || 0) > 0
       ? Number(portfolio.initialCapital)
       : Number(totalAllocatedAmount || 100000);
+  const monthlyDcaForSimulation = Math.max(0, Number(portfolio.monthlyDca || 0));
+  const targetYearsForSimulation = Math.min(20, Math.max(1, Number(portfolio.targetYears || 10)));
   const formattedDate = new Date(portfolio.updatedAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -171,7 +173,12 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             />
           </div>
 
-          <MonteCarloProjection mvoId={portfolio.mvoId} initialCapital={initialCapitalForSimulation} />
+          <MonteCarloProjection
+            mvoId={portfolio.mvoId}
+            initialCapital={initialCapitalForSimulation}
+            monthlyDca={monthlyDcaForSimulation}
+            investmentHorizon={targetYearsForSimulation}
+          />
         </div>
       </div>
     </section>

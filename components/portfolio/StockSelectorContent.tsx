@@ -39,6 +39,11 @@ export default function StockSelectorContent() {
     name: stock.companyName,
     sector: stock.sector,
     marketCap: 0,
+    latestPrice: Number.isFinite(stock.latestPrice) ? Number(stock.latestPrice) : undefined,
+    dayChangePercent:
+      Number.isFinite(stock.latestPrice) && Number.isFinite(stock.yesterdayPrice) && Number(stock.yesterdayPrice) > 0
+        ? ((Number(stock.latestPrice) - Number(stock.yesterdayPrice)) / Number(stock.yesterdayPrice)) * 100
+        : undefined,
   });
 
   // Fetch filters on mount
