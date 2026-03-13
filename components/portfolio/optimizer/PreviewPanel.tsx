@@ -9,6 +9,12 @@ export default function PreviewPanel({
 }: PreviewPanelProps) {
   const riskLabel =
     riskTolerance === 'low' ? 'ต่ำ' : riskTolerance === 'medium' ? 'กลาง' : 'สูง';
+  const riskColorClass =
+    riskTolerance === 'low'
+      ? 'text-emerald-300'
+      : riskTolerance === 'medium'
+        ? 'text-yellow-300'
+        : 'text-red-300';
   const horizonLabel =
     investmentHorizon === 'short' ? 'สั้น' : investmentHorizon === 'medium' ? 'กลาง' : 'ยาว';
 
@@ -28,7 +34,10 @@ export default function PreviewPanel({
       <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-white">สรุปการตั้งค่า</h2>
         <div className="space-y-2 text-sm text-gray-300">
-          <p><span className="text-gray-500">ความเสี่ยง:</span> {riskLabel}</p>
+          <p>
+            <span className="text-gray-500">ความเสี่ยง:</span>{' '}
+            <span className={`font-semibold ${riskColorClass}`}>{riskLabel}</span>
+          </p>
           <p><span className="text-gray-500">ระยะลงทุน:</span> {horizonLabel}</p>
           <p><span className="text-gray-500">จำนวนหุ้นที่เลือก:</span> {selectedStocks.length} ตัว</p>
         </div>

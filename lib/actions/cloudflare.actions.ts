@@ -89,6 +89,8 @@ export interface SavedPortfolioDetailData extends SavedPortfolioCardData {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   monthlyDca?: number;
   targetYears?: number;
+  backtestAndMetrics?: BacktestAndMetrics;
+  riskRewardProfile?: RiskRewardProfile;
 }
 
 /**
@@ -99,8 +101,6 @@ export async function startPortfolioOptimization(
   tickers: string[],
   lookbackYears: number = 3,
   riskLevel: string = 'medium',
-  initialCapital: number = 10000,
-  brokerMinOrder: number = 5,
   requireDiversification: boolean = true,
   modelName: 'mvo' | 'semi' = 'mvo'
 ): Promise<{ success: boolean; reqId?: string; error?: string }> {
@@ -128,7 +128,7 @@ export async function startPortfolioOptimization(
       riskLevel,
       requireDiversification,
       modelName,
-    } as unknown as PortfolioRequest;
+    };
 
     const res = await fetch(
       `${CLOUDFLARE_BASE_URL}/api/v1/portfolio/optimize-async`,
@@ -263,7 +263,9 @@ export async function savePortfolioToDatabase(
   modelName?: 'mvo' | 'semi',
   mvoId?: string,
   monthlyDca: number = 0,
-  targetYears: number = 10
+  targetYears: number = 10,
+  backtestAndMetrics?: BacktestAndMetrics | null,
+  riskRewardProfile?: RiskRewardProfile | null
 ): Promise<{
   success: boolean;
   portfolioId?: string;
@@ -302,6 +304,8 @@ export async function savePortfolioToDatabase(
       volatility,
       riskLevel: normalizeRiskLevel(riskLevel),
       modelName,
+      backtestAndMetrics: backtestAndMetrics || undefined,
+      riskRewardProfile: riskRewardProfile || undefined,
     });
 
     return {
@@ -432,6 +436,8 @@ export async function getSavedPortfolioById(id: string): Promise<{
             : ((portfolio as any).allocations || {}),
         monthlyDca: Number((portfolio as any).monthlyDca || 0),
         targetYears: Number((portfolio as any).targetYears || 10),
+        backtestAndMetrics: (portfolio as any).backtestAndMetrics || undefined,
+        riskRewardProfile: (portfolio as any).riskRewardProfile || undefined,
       },
     };
   } catch (error) {

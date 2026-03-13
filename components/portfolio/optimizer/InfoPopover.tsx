@@ -22,8 +22,6 @@ export default function InfoPopover({ title = "คำอธิบาย", descri
           type="button"
           className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-500/60 bg-gray-700/60 text-[10px] font-semibold text-gray-300 transition-colors hover:border-gray-400 hover:text-gray-200"
           aria-label={title}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onClick={() => setOpen((prev) => !prev)}

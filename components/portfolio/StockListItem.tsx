@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { CompanyProfile } from '@/lib/actions/portfolio.actions';
+import TickerLogo from '@/components/portfolio/detail/TickerLogo';
 
 interface StockListItemProps {
   stock: CompanyProfile;
@@ -33,10 +33,8 @@ export default function StockListItem({
   isSelected,
   onSelect,
 }: StockListItemProps) {
-  const [imgError, setImgError] = React.useState(false);
   const colorIndex = generateColorIndex(stock.ticker);
   const colors = GRADIENT_COLORS[colorIndex];
-  const firstLetter = stock.ticker.charAt(0).toUpperCase();
   const hasPrice = Number.isFinite(stock.latestPrice);
   const price = hasPrice ? Number(stock.latestPrice) : 0;
   const change =
@@ -44,7 +42,6 @@ export default function StockListItem({
       ? ((Number(stock.latestPrice) - Number(stock.yesterdayPrice)) / Number(stock.yesterdayPrice)) * 100
       : 0;
   const isPositive = change >= 0;
-  const stockImageUrl = `https://financialmodelingprep.com/image-stock/${stock.ticker}.png`;
 
   return (
     <div
@@ -60,20 +57,10 @@ export default function StockListItem({
 
       {/* Company Icon - Enhanced */}
       <div
-        className={`relative flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/40 flex items-center justify-center font-bold text-white text-sm sm:text-base shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-200 overflow-hidden`}
+        className={`relative flex-shrink-0 h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 rounded-xl bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/40 flex items-center justify-center font-bold text-white text-sm sm:text-base shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-200 overflow-hidden`}
         title={stock.companyName}
       >
-        {!imgError ? (
-          <img
-            src={stockImageUrl}
-            alt={stock.ticker}
-            className="w-full h-full object-contain p-1"
-            onError={() => setImgError(true)}
-            loading="lazy"
-          />
-        ) : (
-          firstLetter
-        )}
+        <TickerLogo ticker={stock.ticker} size={56} fillContainer className="h-full w-full rounded-xl border-0 bg-transparent" />
       </div>
 
       {/* Company Info - Enhanced */}

@@ -70,6 +70,12 @@ interface MonteCarloProjectionProps {
   initialCapital?: number;
   monthlyDca?: number;
   investmentHorizon?: number;
+  investedBreakdown?: Array<{
+    label: string;
+    percent: number;
+    amount: number;
+    color: string;
+  }>;
 }
 
 type LoadState = 'idle' | 'triggering' | 'processing' | 'completed' | 'error';
@@ -110,14 +116,6 @@ function readWorstDrop(summary: ScenarioSummary): number {
   return summary.worstDropAlongTheWay_pct ?? 0;
 }
 
-function readShortfallPct(metadata: MonteCarloResult['metadata']): number {
-  if (typeof metadata.probabilityOfShortfallPct === 'number') {
-    return metadata.probabilityOfShortfallPct;
-  }
-
-  return metadata.probabilityOfShortfall_pct ?? 0;
-}
-
 async function parseJsonOrThrow<T>(res: Response, defaultErrorMessage: string): Promise<T> {
   const contentType = res.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {
@@ -128,61 +126,12 @@ async function parseJsonOrThrow<T>(res: Response, defaultErrorMessage: string): 
   return (await res.json()) as T;
 }
 
-function scenarioColor(name: 'Expected' | 'Worst Case'): string {
-  if (name === 'Expected') return '#10b981';
-  return '#f97316';
-}
-
-function ScenarioCard({
-  title,
-  summary,
-}: {
-  title: 'Expected' | 'Worst Case';
-  summary: ScenarioSummary;
-}) {
-  const tone = scenarioColor(title);
-  const pnlClass = summary.isProfit ? 'text-emerald-400' : 'text-red-400';
-
-  return (
-    <div className="rounded-2xl border border-gray-700/80 bg-gray-800/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-      <div className="mb-4 flex items-center justify-between border-b border-gray-700/70 pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone }} />
-          <h4 className="text-sm font-semibold text-white">{title} Scenario</h4>
-        </div>
-        <span className="rounded-full border border-gray-600 px-2 py-0.5 text-[11px] text-gray-300">10Y</span>
-      </div>
-
-      <div className="space-y-2.5 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">Final Value</span>
-          <span className="font-semibold text-white">{formatCurrency(summary.finalValue)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">Total Invested</span>
-          <span className="font-medium text-gray-200">{formatCurrency(summary.totalInvested)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">Net Profit / Loss</span>
-          <span className={`font-semibold ${pnlClass}`}>
-            {summary.isProfit ? '+' : '-'}
-            {formatCurrency(Math.abs(summary.netProfitOrLoss))}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">Worst Drawdown</span>
-          <span className="font-medium text-red-300">{formatPercent(readWorstDrop(summary))}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function MonteCarloProjection({
   mvoId,
   initialCapital = 100000,
   monthlyDca = 0,
   investmentHorizon = 10,
+  investedBreakdown = [],
 }: MonteCarloProjectionProps) {
   const selectedYears = Math.min(20, Math.max(1, Math.round(investmentHorizon)));
   const useMonthAxis = selectedYears === 1;
@@ -190,6 +139,7 @@ export default function MonteCarloProjection({
   const [message, setMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [monteCarlo, setMonteCarlo] = useState<MonteCarloResult | null>(null);
+  const [selectedScenario, setSelectedScenario] = useState<'expected' | 'worst'>('expected');
 
   const runProjection = useCallback(async () => {
     if (!mvoId) {
@@ -347,51 +297,148 @@ export default function MonteCarloProjection({
       expectedFinal: expected.finalValue,
       expectedProfit: expected.netProfitOrLoss,
       worstFinal: pessimistic.finalValue,
-      shortfall: readShortfallPct(monteCarlo.metadata),
       spyFinal,
       bilFinal,
     };
   }, [monteCarlo]);
 
+  const selectedSummary = useMemo(() => {
+    if (!monteCarlo) return null;
+
+    return selectedScenario === 'expected'
+      ? monteCarlo.pathSummaries.expectedScenario
+      : monteCarlo.pathSummaries.pessimisticScenario;
+  }, [monteCarlo, selectedScenario]);
+
+  const selectedScenarioLabel =
+    selectedScenario === 'expected' ? 'Expected Scenario' : 'Worst Case Scenario';
+
   return (
-    <section className="rounded-3xl border border-gray-700/80 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.12),_transparent_38%),linear-gradient(160deg,_rgba(20,20,20,0.96),_rgba(5,5,5,0.98))] p-4 sm:p-6 lg:p-7">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-teal-300/80">Portfolio Intelligence</p>
-          <h3 className="text-xl font-semibold text-white sm:text-2xl">Investment Projection</h3>
-          <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} Years)</p>
+    <section className="grid grid-cols-1 gap-3 xl:grid-cols-[390px_1fr]">
+      <aside className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-5 xl:min-h-[760px]">
+        <p className="text-[14px] uppercase tracking-[0.16em] text-gray-300">Portfolio value</p>
+        <p className="mt-3 text-[66px] font-bold leading-[0.92] text-white">
+          {selectedSummary ? formatCurrency(selectedSummary.finalValue) : '--'}
+        </p>
+
+        {selectedSummary ? (
+          <p className={`mt-2 text-base ${selectedSummary.netProfitOrLoss >= 0 ? 'text-[#ff6d6d]' : 'text-[#00e7c2]'}`}>
+            {selectedSummary.netProfitOrLoss >= 0 ? '↓' : '↑'}
+            <span className="ml-1.5">{formatPercent(Math.abs((selectedSummary.netProfitOrLoss / Math.max(1, selectedSummary.finalValue)) * 100))}</span>
+            <span className="ml-2.5 text-sm text-gray-400">
+              {selectedSummary.netProfitOrLoss >= 0 ? '-' : '+'}{formatCurrency(Math.abs(selectedSummary.netProfitOrLoss / 120))} this month
+            </span>
+          </p>
+        ) : null}
+
+        <div className="mt-4 inline-flex rounded-lg border border-[#2b3b54] bg-[#0b111d] p-1.5 text-base">
+          <button
+            type="button"
+            onClick={() => setSelectedScenario('expected')}
+            className={`rounded-md px-3 py-1.5 ${
+              selectedScenario === 'expected' ? 'bg-[#13233c] text-[#8bc8ff]' : 'text-gray-400'
+            }`}
+          >
+            Expected
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedScenario('worst')}
+            className={`rounded-md px-3 py-1.5 ${
+              selectedScenario === 'worst' ? 'bg-[#2a1820] text-[#ff8e8e]' : 'text-gray-400'
+            }`}
+          >
+            Worst Case
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void runProjection()}
-          className="rounded-xl border border-gray-500/70 bg-gray-800/80 px-4 py-2.5 text-xs font-semibold text-gray-100 transition hover:border-teal-400 hover:text-teal-300"
-          disabled={state === 'triggering' || state === 'processing'}
-        >
-          {state === 'triggering' || state === 'processing' ? 'Running...' : 'Run Again'}
-        </button>
-      </div>
+        {selectedSummary ? (
+          <div className="mt-4 rounded-xl border border-[#1f2a3d] bg-[#0a1019] p-4 text-base">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xl font-semibold text-gray-100">{selectedScenarioLabel}</p>
+              <span className="rounded border border-[#2b3b54] px-2 py-1 text-xs text-gray-400">{selectedYears}Y</span>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Final Value</span>
+                <span className="font-semibold text-white">{formatCurrency(selectedSummary.finalValue)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Total Invested</span>
+                <span className="font-medium text-gray-200">{formatCurrency(selectedSummary.totalInvested)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Net Profit / Loss</span>
+                <span className={`font-semibold ${selectedSummary.isProfit ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
+                  {selectedSummary.isProfit ? '+' : '-'}{formatCurrency(Math.abs(selectedSummary.netProfitOrLoss))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Worst Drawdown</span>
+                <span className="font-semibold text-[#ff5b5b]">-{formatPercent(Math.abs(readWorstDrop(selectedSummary)))}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-5">
+          <p className="text-xl text-gray-200">Where your money is invested</p>
+          <div className="mt-3 flex h-4 overflow-hidden rounded-sm border border-[#2b3b54]">
+            {investedBreakdown.map((item) => (
+              <span
+                key={`bar-${item.label}`}
+                style={{ width: `${Math.max(3, item.percent)}%`, backgroundColor: item.color }}
+              />
+            ))}
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            {investedBreakdown.map((item) => (
+              <div key={`row-${item.label}`} className="flex items-center justify-between text-lg">
+                <div className="inline-flex items-center gap-2.5">
+                  <span className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                  <span className="text-gray-300">{item.label}</span>
+                  <span className="rounded bg-[#111f37] px-1.5 py-0.5 text-sm text-[#7db8ff]">{item.percent.toFixed(0)}%</span>
+                </div>
+                <span className="text-gray-300">{formatCurrency(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Portfolio Intelligence</p>
+            <h3 className="text-3xl font-semibold text-white sm:text-4xl">Investment Projection</h3>
+            <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} Years)</p>
+          </div>
+
+          <span className="rounded border border-[#2b3b54] bg-[#0e1726] px-2 py-1 text-[10px] text-gray-300">Auto Running</span>
+        </div>
 
       {overviewStats ? (
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Expected Final Value</p>
-            <p className="mt-1.5 text-lg font-semibold text-white">{formatCurrency(overviewStats.expectedFinal)}</p>
+          <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Expected Final Value</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{formatCurrency(overviewStats.expectedFinal)}</p>
           </div>
-          <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Expected Net P/L</p>
-            <p className={`mt-1.5 text-lg font-semibold ${overviewStats.expectedProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Expected Net P/L</p>
+            <p className={`mt-1 text-2xl font-semibold ${overviewStats.expectedProfit >= 0 ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
               {overviewStats.expectedProfit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(overviewStats.expectedProfit))}
             </p>
           </div>
-          <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Worst Case Final Value</p>
-            <p className="mt-1.5 text-lg font-semibold text-orange-300">{formatCurrency(overviewStats.worstFinal)}</p>
+          <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Worst Case Final Value</p>
+            <p className="mt-1 text-2xl font-semibold text-[#ff5b5b]">{formatCurrency(overviewStats.worstFinal)}</p>
           </div>
-          <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-3.5">
-            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">SPY / BIL Final Value</p>
-            <p className="mt-1.5 text-sm font-semibold text-blue-300">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
-            <p className="mt-1 text-sm font-semibold text-sky-300">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
+          <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">SPY / BIL Final</p>
+            <p className="mt-1 text-xl font-semibold text-[#5ea6ff]">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
+            <p className="mt-0.5 text-xl font-semibold text-[#97c9ff]">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
           </div>
         </div>
       ) : null}
@@ -411,18 +458,18 @@ export default function MonteCarloProjection({
         <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
       ) : null}
 
-      <div className="h-[430px] w-full rounded-2xl border border-gray-700/80 bg-black/70 p-3 sm:h-[520px] sm:p-5">
+      <div className="h-[430px] w-full rounded-lg border border-[#1f2a3d] bg-[#02050c] p-2 sm:h-[520px]">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="4 4" stroke="#30333A" />
+              <CartesianGrid strokeDasharray="2 4" stroke="#1f2a3d" />
               <XAxis
                 dataKey="step"
                 type="number"
                 domain={[0, 'dataMax']}
                 ticks={xTicks}
-                tick={{ fill: '#CCDADC', fontSize: 12 }}
-                axisLine={{ stroke: '#30333A' }}
+                tick={{ fill: '#6e7f99', fontSize: 10 }}
+                axisLine={{ stroke: '#1f2a3d' }}
                 tickLine={false}
                 tickFormatter={(step) => {
                   const maxStep = chartData[chartData.length - 1]?.step ?? 1;
@@ -433,22 +480,22 @@ export default function MonteCarloProjection({
                   const yearValue = (Number(step) / Math.max(1, maxStep)) * Math.max(1, investmentHorizon);
                   return `${Math.round(yearValue)}`;
                 }}
-                label={{ value: useMonthAxis ? 'Months' : 'Years', position: 'insideBottom', offset: -8, fill: '#9095A1' }}
+                label={{ value: useMonthAxis ? 'Months' : 'Years', position: 'insideBottom', offset: -8, fill: '#6e7f99' }}
               />
               <YAxis
-                tick={{ fill: '#CCDADC', fontSize: 12 }}
-                axisLine={{ stroke: '#30333A' }}
+                tick={{ fill: '#6e7f99', fontSize: 10 }}
+                axisLine={{ stroke: '#1f2a3d' }}
                 tickLine={false}
                 tickFormatter={(value) => formatCurrency(Number(value))}
                 width={110}
-                label={{ value: 'Portfolio Value ($)', angle: -90, position: 'insideLeft', fill: '#9095A1' }}
+                label={{ value: 'Portfolio Value ($)', angle: -90, position: 'insideLeft', fill: '#6e7f99' }}
               />
               <Tooltip
                 contentStyle={{
-                  background: '#F8FAFC',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '10px',
-                  color: '#0F172A',
+                  background: '#0f1522',
+                  border: '1px solid #33425a',
+                  borderRadius: '8px',
+                  color: '#e2e8f0',
                 }}
                 labelFormatter={(label) => {
                   const maxStep = chartData[chartData.length - 1]?.step ?? 1;
@@ -461,18 +508,18 @@ export default function MonteCarloProjection({
                 }}
                 formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name)]}
               />
-              <Line type="monotone" dataKey="expected" name="Portfolio Expected" stroke="#10b981" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="expected" name="Portfolio Expected" stroke="#00e7c2" strokeWidth={3} dot={false} />
               <Line
                 type="monotone"
                 dataKey="pessimistic"
                 name="Portfolio Worst Case"
-                stroke="#f97316"
-                strokeWidth={3}
+                stroke="#ff5b5b"
+                strokeWidth={2.4}
                 dot={false}
-                strokeDasharray="6 4"
+                strokeDasharray="5 5"
               />
-              <Line type="monotone" dataKey="spyExpected" name="SPY Expected" stroke="#3b82f6" strokeWidth={2.6} dot={false} />
-              <Line type="monotone" dataKey="bilExpected" name="BIL Expected" stroke="#7dd3fc" strokeWidth={2.6} dot={false} />
+              <Line type="monotone" dataKey="spyExpected" name="SPY Expected" stroke="#5ea6ff" strokeWidth={2.1} dot={false} />
+              <Line type="monotone" dataKey="bilExpected" name="BIL Expected" stroke="#97c9ff" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -482,21 +529,21 @@ export default function MonteCarloProjection({
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl border border-gray-700/60 bg-gray-900/60 px-3 py-2">
-        <div className="inline-flex items-center gap-2 text-base font-medium text-emerald-400">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-md border border-[#1f2a3d] bg-[#050b16] px-3 py-2">
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-[#00e7c2]">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#00e7c2]" />
           <span>Portfolio Expected</span>
         </div>
-        <div className="inline-flex items-center gap-2 text-base font-medium text-orange-400">
-          <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-[#ff5b5b]">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5b5b]" />
           <span>Worst Case</span>
         </div>
-        <div className="inline-flex items-center gap-2 text-base font-medium text-blue-400">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-400" />
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-[#5ea6ff]">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#5ea6ff]" />
           <span>SPY</span>
         </div>
-        <div className="inline-flex items-center gap-2 text-base font-medium text-sky-300">
-          <span className="h-2.5 w-2.5 rounded-full bg-sky-300" />
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-[#97c9ff]">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#97c9ff]" />
           <span>BIL (Deposit Benchmark)</span>
         </div>
       </div>
@@ -505,32 +552,7 @@ export default function MonteCarloProjection({
         X-axis is converted from simulation steps to {useMonthAxis ? 'months' : 'years'} based on selected horizon ({selectedYears} {selectedYears === 1 ? 'year' : 'years'}).
       </p>
 
-      {monteCarlo ? (
-        <>
-          <div className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ScenarioCard title="Expected" summary={monteCarlo.pathSummaries.expectedScenario} />
-            <ScenarioCard title="Worst Case" summary={monteCarlo.pathSummaries.pessimisticScenario} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-gray-500">Risk Indicator</p>
-              <p className="mt-2 text-lg font-semibold text-red-300">
-                Probability Of Shortfall: {formatPercent(readShortfallPct(monteCarlo.metadata))}
-              </p>
-              <p className="mt-1 text-xs text-gray-400">Higher value means a greater chance to end below target return.</p>
-            </div>
-
-            <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-gray-500">Inflation Context</p>
-              <p className="mt-2 text-lg font-semibold text-blue-300">
-                Inflation Rate: {formatPercent(monteCarlo.metadata.inflationRate)}
-              </p>
-              <p className="mt-1 text-xs text-gray-400">Returns above this level represent stronger real purchasing power growth.</p>
-            </div>
-          </div>
-        </>
-      ) : null}
+      </div>
     </section>
   );
 }

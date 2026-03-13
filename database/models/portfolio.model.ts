@@ -1,4 +1,5 @@
 import { Schema, model, models, type Document, type Model } from 'mongoose';
+import type { BacktestAndMetrics, RiskRewardProfile } from '@/components/portfolio/analysis-types';
 
 export interface PortfolioItem extends Document {
   userId: string;
@@ -13,6 +14,8 @@ export interface PortfolioItem extends Document {
   volatility: number;
   riskLevel: 'low' | 'medium' | 'high';
   modelName?: 'mvo' | 'semi';
+  backtestAndMetrics?: BacktestAndMetrics;
+  riskRewardProfile?: RiskRewardProfile;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +46,8 @@ const PortfolioSchema = new Schema<PortfolioItem>(
     volatility: { type: Number, required: true },
     riskLevel: { type: String, enum: ['low', 'medium', 'high'], required: true },
     modelName: { type: String, enum: ['mvo', 'semi'], required: false },
+    backtestAndMetrics: { type: Schema.Types.Mixed, required: false },
+    riskRewardProfile: { type: Schema.Types.Mixed, required: false },
   },
   { timestamps: true }
 );

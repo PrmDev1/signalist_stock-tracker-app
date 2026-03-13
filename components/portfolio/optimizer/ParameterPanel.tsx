@@ -1,5 +1,12 @@
 import type { ParameterPanelProps, RiskTolerance } from './types';
 import InfoPopover from '@/components/portfolio/optimizer/InfoPopover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function ParameterPanel({
   investmentAmount,
@@ -109,36 +116,42 @@ export default function ParameterPanel({
         </div>
 
         <div>
-          <label htmlFor="investmentHorizon" className="mb-1 flex items-center text-sm font-medium text-gray-300">
+          <label className="mb-1 flex items-center text-sm font-medium text-gray-300">
             ระยะเวลาลงทุน
           </label>
-          <select
-            id="investmentHorizon"
+          <Select
             value={investmentHorizon}
-            onChange={(e) => setInvestmentHorizon(e.target.value as typeof investmentHorizon)}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-600 focus:outline-none"
+            onValueChange={(value) => setInvestmentHorizon(value as typeof investmentHorizon)}
           >
-            <option value="short">สั้น</option>
-            <option value="medium">กลาง</option>
-            <option value="long">ยาว</option>
-          </select>
+            <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-700 text-white">
+              <SelectValue placeholder="เลือกช่วงเวลา" />
+            </SelectTrigger>
+            <SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
+              <SelectItem value="short">สั้น</SelectItem>
+              <SelectItem value="medium">กลาง</SelectItem>
+              <SelectItem value="long">ยาว</SelectItem>
+            </SelectContent>
+          </Select>
           <p className="mt-1 text-xs text-gray-500">ระบบใช้ข้อมูลย้อนหลัง {lookbackYears} ปี</p>
         </div>
 
         <div>
-          <label htmlFor="modelName" className="mb-1 flex items-center text-sm font-medium text-gray-300">
-            โมเดลที่ใช้จัดพอร์ต
+          <div className="mb-1 flex items-center text-sm font-medium text-gray-300">
+            <span>โมเดลที่ใช้จัดพอร์ต</span>
             <InfoPopover title="โมเดลจัดพอร์ต" description="MVO เหมาะกับการบาลานซ์ผลตอบแทน/ความผันผวน ส่วน Semi เหมาะกับผู้ที่เน้นลดความเสี่ยงขาลง" />
-          </label>
-          <select
-            id="modelName"
+          </div>
+          <Select
             value={modelName}
-            onChange={(e) => setModelName(e.target.value as 'mvo' | 'semi')}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-600 focus:outline-none"
+            onValueChange={(value) => setModelName(value as 'mvo' | 'semi')}
           >
-            <option value="mvo">MVO (Mean-Variance)</option>
-            <option value="semi">Semi-Variance</option>
-          </select>
+            <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-700 text-white">
+              <SelectValue placeholder="เลือกโมเดล" />
+            </SelectTrigger>
+            <SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
+              <SelectItem value="mvo">MVO (Mean-Variance)</SelectItem>
+              <SelectItem value="semi">Semi-Variance</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>

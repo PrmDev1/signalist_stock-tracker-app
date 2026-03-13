@@ -61,6 +61,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   const canCreatePortfolio = selectedStocks.length >= 2;
 
   const lookbackYears = useMemo(() => {
+    // lookbackYears is used only for portfolio optimization historical window.
     if (investmentHorizon === 'short') return 3;
     if (investmentHorizon === 'long') return 10;
     return 5;
@@ -145,8 +146,6 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         tickers,
         lookbackYears,
         selectedRiskLevel,
-        investmentAmount,
-        brokerMinOrder,
         requireDiversification,
         modelName
       );
@@ -289,7 +288,9 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         modelName,
         reqId || undefined,
         monthlyDca,
-        targetYears
+        targetYears,
+        backtestAndMetrics,
+        riskRewardProfile
       );
 
       if (response.success) {

@@ -3,8 +3,12 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { getSavedPortfolioById } from '@/lib/actions/cloudflare.actions';
 import { getPortfolioTickers } from '@/lib/actions/portfolio.actions';
-import PortfolioAllocationChart from '@/components/portfolio/PortfolioAllocationChart';
+import BacktestChart from '@/components/portfolio/BacktestChart';
 import MonteCarloProjection from '@/components/portfolio/MonteCarloProjection';
+import PortfolioAllocationChart from '@/components/portfolio/PortfolioAllocationChart';
+import RiskRewardCard from '@/components/portfolio/RiskRewardCard';
+import DashboardLayout from '@/components/portfolio/detail/DashboardLayout';
+import TickerLogo from '@/components/portfolio/detail/TickerLogo';
 
 interface PortfolioDetailPageProps {
   params: Promise<{ id: string }>;
@@ -91,6 +95,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
     .sort((a, b) => b.weightPercent - a.weightPercent);
 
   const expectedReturnPercent = truncateToTwo(portfolio.expectedReturn * 100);
+  const volatilityPercent = truncateToTwo(portfolio.volatility * 100);
   const totalAllocatedAmount = holdings.reduce((sum, row) => sum + row.allocatedAmount, 0);
   const initialCapitalForSimulation =
     Number(portfolio.initialCapital || 0) > 0
@@ -98,6 +103,16 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
       : Number(totalAllocatedAmount || 100000);
   const monthlyDcaForSimulation = Math.max(0, Number(portfolio.monthlyDca || 0));
   const targetYearsForSimulation = Math.min(20, Math.max(1, Number(portfolio.targetYears || 10)));
+  const investedBreakdown = holdings.slice(0, 8).map((row, index) => {
+    const palette = ['#4a7bff', '#8f66ff', '#ff52b9', '#ffb12b', '#22d3ee', '#34d399', '#f59e0b', '#ef4444'];
+
+    return {
+      label: row.ticker,
+      percent: row.weightPercent,
+      amount: row.allocatedAmount,
+      color: palette[index % palette.length],
+    };
+  });
   const formattedDate = new Date(portfolio.updatedAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -105,54 +120,70 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
   });
 
   return (
-    <section className="space-y-6">
-      <Link
-        href="/portfolio"
-        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-yellow-400 transition-colors"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to Portfolio
-      </Link>
+    <DashboardLayout>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between rounded-xl border border-[#1f2a3d] bg-[#070b13] px-3 py-2">
+          <Link
+            href="/portfolio"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Portfolio
+          </Link>
 
-      <div className="rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-800/70 to-gray-900/80 p-6 shadow-xl">
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-white">{portfolio.name}</h1>
-            <p className="mt-3 text-lg text-gray-300">{holdings.length} assets</p>
-            <p className="mt-1 text-lg text-gray-300">
-              Risk Level: <span className={`font-semibold ${riskClass}`}>{riskLabel}</span>
-            </p>
-            <p className="mt-1 text-lg text-gray-300">
-              Expected Return: <span className="font-semibold text-teal-400">+{expectedReturnPercent.toFixed(2)}%</span>
-            </p>
-            <p className="mt-1 text-base text-gray-500">Last Updated: {formattedDate}</p>
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-300">{portfolio.name}</span>
+            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-400">{holdings.length} Assets</span>
+            <span className={`rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 ${riskClass}`}>Risk {riskLabel}</span>
+            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-500">Updated {formattedDate}</span>
           </div>
         </div>
 
-        <div className="mt-8 space-y-6">
-          <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
-            <h3 className="mb-2 text-base font-semibold text-white">Portfolio Holdings</h3>
+        <MonteCarloProjection
+          mvoId={portfolio.mvoId}
+          initialCapital={initialCapitalForSimulation}
+          monthlyDca={monthlyDcaForSimulation}
+          investmentHorizon={targetYearsForSimulation}
+          investedBreakdown={investedBreakdown}
+        />
+
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_360px]">
+          <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Portfolio Holdings</h3>
+              <div className="inline-flex items-center gap-4 text-xs">
+                <span className="text-gray-400">Expected Return <span className="ml-1 text-[#00e7c2]">+{expectedReturnPercent.toFixed(2)}%</span></span>
+                <span className="text-gray-400">Volatility <span className="ml-1 text-[#ffbf66]">{volatilityPercent.toFixed(2)}%</span></span>
+                <span className="text-gray-400">Capital <span className="ml-1 text-white">${totalAllocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left">
-                <thead className="border-b border-gray-700 text-sm text-gray-400">
+              <table className="w-full min-w-[820px] text-left">
+                <thead className="border-b border-[#1f2a3d] text-xs uppercase tracking-wide text-gray-500">
                   <tr>
-                    <th className="px-4 py-3">Ticker</th>
-                    <th className="px-4 py-3">Company Name</th>
-                    <th className="px-4 py-3">Exchange</th>
-                    <th className="px-4 py-3">Sector</th>
-                    <th className="px-4 py-3">Weight</th>
-                    <th className="px-4 py-3">Allocated Amount</th>
+                    <th className="px-3 py-2.5">Ticker</th>
+                    <th className="px-3 py-2.5">Company Name</th>
+                    <th className="px-3 py-2.5">Exchange</th>
+                    <th className="px-3 py-2.5">Sector</th>
+                    <th className="px-3 py-2.5">Weight</th>
+                    <th className="px-3 py-2.5">Allocated Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {holdings.map((row) => (
-                    <tr key={row.ticker} className="border-b border-gray-800 last:border-0">
-                      <td className="px-4 py-3 font-semibold text-white">{row.ticker}</td>
-                      <td className="px-4 py-3 text-gray-200">{row.companyName}</td>
-                      <td className="px-4 py-3 text-gray-300">{row.exchange}</td>
-                      <td className="px-4 py-3 text-gray-300">{row.sector}</td>
-                      <td className="px-4 py-3 text-gray-200">{row.weightPercent.toFixed(2)}%</td>
-                      <td className="px-4 py-3 text-gray-200">${row.allocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <tr key={row.ticker} className="border-b border-[#141c2b] text-sm last:border-0">
+                      <td className="px-3 py-3 font-semibold text-white">
+                        <div className="inline-flex items-center gap-2.5">
+                          <TickerLogo ticker={row.ticker} size={30} />
+                          <span className="text-base font-semibold tracking-wide">{row.ticker}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-[15px] text-gray-200">{row.companyName}</td>
+                      <td className="px-3 py-3 text-[15px] text-gray-300">{row.exchange}</td>
+                      <td className="px-3 py-3 text-[15px] text-gray-300">{row.sector}</td>
+                      <td className="px-3 py-3 text-[15px] font-medium text-gray-100">{row.weightPercent.toFixed(2)}%</td>
+                      <td className="px-3 py-3 text-[15px] font-medium text-gray-100">${row.allocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -160,8 +191,8 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
-            <h3 className="mb-2 text-base font-semibold text-white">Allocation Chart</h3>
+          <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+            <h3 className="mb-2 text-sm font-semibold text-white">Allocation</h3>
             <PortfolioAllocationChart
               data={holdings.map((row) => ({
                 ticker: row.ticker,
@@ -172,15 +203,13 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
               }))}
             />
           </div>
+        </div>
 
-          <MonteCarloProjection
-            mvoId={portfolio.mvoId}
-            initialCapital={initialCapitalForSimulation}
-            monthlyDca={monthlyDcaForSimulation}
-            investmentHorizon={targetYearsForSimulation}
-          />
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_360px]">
+          <BacktestChart backtestAndMetrics={portfolio.backtestAndMetrics} />
+          <RiskRewardCard profile={portfolio.riskRewardProfile} />
         </div>
       </div>
-    </section>
+    </DashboardLayout>
   );
 }
