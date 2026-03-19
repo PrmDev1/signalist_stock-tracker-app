@@ -133,6 +133,7 @@ export default function MonteCarloProjection({
   investmentHorizon = 10,
   investedBreakdown = [],
 }: MonteCarloProjectionProps) {
+  const currentCalendarYear = new Date().getFullYear();
   const selectedYears = Math.min(20, Math.max(1, Math.round(investmentHorizon)));
   const useMonthAxis = selectedYears === 1;
   const [state, setState] = useState<LoadState>('idle');
@@ -249,9 +250,10 @@ export default function MonteCarloProjection({
     const rows: ChartPoint[] = [];
 
     for (let index = 0; index < maxLength; index += 1) {
+      const yearValue = pointsPerYear > 0 ? index / pointsPerYear : 0;
       rows.push({
         step: index,
-        year: pointsPerYear > 0 ? index / pointsPerYear : 0,
+        year: yearValue,
         expected: expectedPath[index] ?? expectedPath[expectedPath.length - 1] ?? 0,
         pessimistic: pessimisticPath[index] ?? pessimisticPath[pessimisticPath.length - 1] ?? 0,
         spyExpected: spyExpectedPath[index] ?? spyExpectedPath[spyExpectedPath.length - 1] ?? 0,
@@ -311,22 +313,32 @@ export default function MonteCarloProjection({
   }, [monteCarlo, selectedScenario]);
 
   const selectedScenarioLabel =
-    selectedScenario === 'expected' ? 'Expected Scenario' : 'Worst Case Scenario';
+    selectedScenario === 'expected' ? 'สถานการณ์ที่คาดหวัง' : 'สถานการณ์แย่ที่สุด';
 
   return (
     <section className="grid grid-cols-1 gap-3 xl:grid-cols-[390px_1fr]">
       <aside className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-5 xl:min-h-[760px]">
-        <p className="text-[14px] uppercase tracking-[0.16em] text-gray-300">Portfolio value</p>
-        <p className="mt-3 text-[66px] font-bold leading-[0.92] text-white">
+        <p className="text-[14px] uppercase tracking-[0.16em] text-gray-300">มูลค่าพอร์ตโฟลิโอ</p>
+        <p className="mt-3 max-w-full break-all text-[clamp(2.2rem,7.2vw,3.9rem)] font-bold leading-[0.92] tracking-[-0.02em] text-white">
           {selectedSummary ? formatCurrency(selectedSummary.finalValue) : '--'}
         </p>
 
         {selectedSummary ? (
-          <p className={`mt-2 text-base ${selectedSummary.netProfitOrLoss >= 0 ? 'text-[#ff6d6d]' : 'text-[#00e7c2]'}`}>
-            {selectedSummary.netProfitOrLoss >= 0 ? '↓' : '↑'}
-            <span className="ml-1.5">{formatPercent(Math.abs((selectedSummary.netProfitOrLoss / Math.max(1, selectedSummary.finalValue)) * 100))}</span>
+          <p className={`mt-2 text-base ${selectedSummary.netProfitOrLoss >= 0 ? 'text-[#00e7c2]' : 'text-[#ff6d6d]'}`}>
+            {selectedSummary.netProfitOrLoss >= 0 ? '↑' : '↓'}
+            <span className="ml-1.5">{formatPercent(Math.abs((selectedSummary.netProfitOrLoss / Math.max(1, selectedSummary.totalInvested)) * 100))} ROIC</span>
             <span className="ml-2.5 text-sm text-gray-400">
-              {selectedSummary.netProfitOrLoss >= 0 ? '-' : '+'}{formatCurrency(Math.abs(selectedSummary.netProfitOrLoss / 120))} this month
+              {selectedSummary.netProfitOrLoss >= 0 ? '+' : '-'}
+              {formatPercent(
+                Math.abs(
+                  (Math.pow(
+                    Math.max(1, selectedSummary.finalValue) / Math.max(1, selectedSummary.totalInvested),
+                    1 / Math.max(1, selectedYears)
+                  ) - 1) *
+                    100
+                )
+              )}{' '}
+              CAGR est.
             </span>
           </p>
         ) : null}
@@ -339,7 +351,7 @@ export default function MonteCarloProjection({
               selectedScenario === 'expected' ? 'bg-[#13233c] text-[#8bc8ff]' : 'text-gray-400'
             }`}
           >
-            Expected
+            คาดหวัง
           </button>
           <button
             type="button"
@@ -348,7 +360,7 @@ export default function MonteCarloProjection({
               selectedScenario === 'worst' ? 'bg-[#2a1820] text-[#ff8e8e]' : 'text-gray-400'
             }`}
           >
-            Worst Case
+            แย่ที่สุด
           </button>
         </div>
 
@@ -361,21 +373,21 @@ export default function MonteCarloProjection({
 
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Final Value</span>
+                <span className="text-gray-400">มูลค่าสุดท้าย</span>
                 <span className="font-semibold text-white">{formatCurrency(selectedSummary.finalValue)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Total Invested</span>
+                <span className="text-gray-400">เงินลงทุนทั้งหมด</span>
                 <span className="font-medium text-gray-200">{formatCurrency(selectedSummary.totalInvested)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Net Profit / Loss</span>
+                <span className="text-gray-400">กำไร / ขาดทุนสุทธิ</span>
                 <span className={`font-semibold ${selectedSummary.isProfit ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
                   {selectedSummary.isProfit ? '+' : '-'}{formatCurrency(Math.abs(selectedSummary.netProfitOrLoss))}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Worst Drawdown</span>
+                <span className="text-gray-400">การดึงกลับสูงสุด</span>
                 <span className="font-semibold text-[#ff5b5b]">-{formatPercent(Math.abs(readWorstDrop(selectedSummary)))}</span>
               </div>
             </div>
@@ -383,7 +395,7 @@ export default function MonteCarloProjection({
         ) : null}
 
         <div className="mt-5">
-          <p className="text-xl text-gray-200">Where your money is invested</p>
+          <p className="text-xl text-gray-200">การกระจายการลงทุน</p>
           <div className="mt-3 flex h-4 overflow-hidden rounded-sm border border-[#2b3b54]">
             {investedBreakdown.map((item) => (
               <span
@@ -411,32 +423,32 @@ export default function MonteCarloProjection({
       <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Portfolio Intelligence</p>
-            <h3 className="text-3xl font-semibold text-white sm:text-4xl">Investment Projection</h3>
-            <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} Years)</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">วิเคราะห์พอร์ตโฟลิโอ</p>
+            <h3 className="text-3xl font-semibold text-white sm:text-4xl">คาดการณ์การลงทุน</h3>
+            <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} ปี)</p>
           </div>
 
-          <span className="rounded border border-[#2b3b54] bg-[#0e1726] px-2 py-1 text-[10px] text-gray-300">Auto Running</span>
+          <span className="rounded border border-[#2b3b54] bg-[#0e1726] px-2 py-1 text-[10px] text-gray-300">ทำงานอัตโนมัติ</span>
         </div>
 
       {overviewStats ? (
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Expected Final Value</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">มูลค่าสุดท้าย (กรณีคาดหวัง)</p>
             <p className="mt-1 text-2xl font-semibold text-white">{formatCurrency(overviewStats.expectedFinal)}</p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Expected Net P/L</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">กำไร/ขาดทุนสุทธิ (คาดหวัง)</p>
             <p className={`mt-1 text-2xl font-semibold ${overviewStats.expectedProfit >= 0 ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
               {overviewStats.expectedProfit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(overviewStats.expectedProfit))}
             </p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Worst Case Final Value</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">มูลค่าสุดท้าย (กรณีแย่สุด)</p>
             <p className="mt-1 text-2xl font-semibold text-[#ff5b5b]">{formatCurrency(overviewStats.worstFinal)}</p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">SPY / BIL Final</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">เปรียบเทียบ SPY / BIL</p>
             <p className="mt-1 text-xl font-semibold text-[#5ea6ff]">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
             <p className="mt-0.5 text-xl font-semibold text-[#97c9ff]">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
           </div>
@@ -445,8 +457,8 @@ export default function MonteCarloProjection({
 
       {(state === 'triggering' || state === 'processing') && (
         <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-          <p className="text-sm font-medium text-blue-200">Generating Monte Carlo Projection...</p>
-          <p className="mt-1 text-xs text-blue-100/80">Running thousands of simulations...</p>
+          <p className="text-sm font-medium text-blue-200">กำลังสร้าง Monte Carlo Projection...</p>
+          <p className="mt-1 text-xs text-blue-100/80">ระบบกำลังจำลองสถานการณ์หลายพันครั้ง...</p>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-blue-950/60">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-400" />
           </div>
@@ -478,9 +490,9 @@ export default function MonteCarloProjection({
                     return `${Math.round(monthValue)}`;
                   }
                   const yearValue = (Number(step) / Math.max(1, maxStep)) * Math.max(1, investmentHorizon);
-                  return `${Math.round(yearValue)}`;
+                  return `${currentCalendarYear + Math.round(yearValue)}`;
                 }}
-                label={{ value: useMonthAxis ? 'Months' : 'Years', position: 'insideBottom', offset: -8, fill: '#6e7f99' }}
+              label={{ value: useMonthAxis ? 'เดือน' : 'ปี ค.ศ.', position: 'insideBottom', offset: -8, fill: '#6e7f99' }}
               />
               <YAxis
                 tick={{ fill: '#6e7f99', fontSize: 10 }}
@@ -488,7 +500,7 @@ export default function MonteCarloProjection({
                 tickLine={false}
                 tickFormatter={(value) => formatCurrency(Number(value))}
                 width={110}
-                label={{ value: 'Portfolio Value ($)', angle: -90, position: 'insideLeft', fill: '#6e7f99' }}
+              label={{ value: 'มูลค่าพอร์ต ($)', angle: -90, position: 'insideLeft', fill: '#6e7f99' }}
               />
               <Tooltip
                 contentStyle={{
@@ -501,30 +513,30 @@ export default function MonteCarloProjection({
                   const maxStep = chartData[chartData.length - 1]?.step ?? 1;
                   if (useMonthAxis) {
                     const monthValue = (Number(label) / Math.max(1, maxStep)) * 12;
-                    return `Month ${monthValue.toFixed(1)}`;
+                    return `เดือนที่ ${monthValue.toFixed(1)}`;
                   }
                   const yearValue = (Number(label) / Math.max(1, maxStep)) * Math.max(1, investmentHorizon);
-                  return `Year ${yearValue.toFixed(1)}`;
+                  return `${currentCalendarYear + Math.round(yearValue)}`;
                 }}
                 formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name)]}
               />
-              <Line type="monotone" dataKey="expected" name="Portfolio Expected" stroke="#00e7c2" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="expected" name="พอร์ตคาดหวัง" stroke="#00e7c2" strokeWidth={3} dot={false} />
               <Line
                 type="monotone"
                 dataKey="pessimistic"
-                name="Portfolio Worst Case"
+                name="กรณีแย่ที่สุด"
                 stroke="#ff5b5b"
                 strokeWidth={2.4}
                 dot={false}
                 strokeDasharray="5 5"
               />
-              <Line type="monotone" dataKey="spyExpected" name="SPY Expected" stroke="#5ea6ff" strokeWidth={2.1} dot={false} />
-              <Line type="monotone" dataKey="bilExpected" name="BIL Expected" stroke="#97c9ff" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="spyExpected" name="SPY" stroke="#5ea6ff" strokeWidth={2.1} dot={false} />
+              <Line type="monotone" dataKey="bilExpected" name="BIL (เงินฝาก)" stroke="#97c9ff" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-gray-500">
-            Projection chart will appear after simulation completes.
+            กราฟคาดการณ์จะแสดงหลังการจำลองเสร็จสิ้น
           </div>
         )}
       </div>
@@ -532,11 +544,11 @@ export default function MonteCarloProjection({
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-md border border-[#1f2a3d] bg-[#050b16] px-3 py-2">
         <div className="inline-flex items-center gap-2 text-sm font-medium text-[#00e7c2]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#00e7c2]" />
-          <span>Portfolio Expected</span>
+          <span>พอร์ตคาดหวัง</span>
         </div>
         <div className="inline-flex items-center gap-2 text-sm font-medium text-[#ff5b5b]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#ff5b5b]" />
-          <span>Worst Case</span>
+          <span>กรณีแย่ที่สุด</span>
         </div>
         <div className="inline-flex items-center gap-2 text-sm font-medium text-[#5ea6ff]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#5ea6ff]" />
@@ -544,12 +556,12 @@ export default function MonteCarloProjection({
         </div>
         <div className="inline-flex items-center gap-2 text-sm font-medium text-[#97c9ff]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#97c9ff]" />
-          <span>BIL (Deposit Benchmark)</span>
+          <span>BIL (เงินฝาก)</span>
         </div>
       </div>
 
       <p className="mt-2 text-xs text-gray-500">
-        X-axis is converted from simulation steps to {useMonthAxis ? 'months' : 'years'} based on selected horizon ({selectedYears} {selectedYears === 1 ? 'year' : 'years'}).
+        แกน X แสดงปี ค.ศ. จากข้อมูลจำลอง ({selectedYears} {selectedYears === 1 ? 'ปี' : 'ปี'}) เริ่มต้น ค.ศ. {currentCalendarYear}
       </p>
 
       </div>

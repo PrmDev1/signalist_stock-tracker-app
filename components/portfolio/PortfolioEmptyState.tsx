@@ -15,7 +15,7 @@ export default function PortfolioEmptyState() {
         Create your first portfolio to start optimizing your investments with AI-powered allocation.
       </p>
       <Link
-        href="/portfolio/select-stocks"
+        href="/portfolio/presets"
         className="px-6 py-3 bg-emerald-500 text-black font-semibold rounded-xl hover:bg-emerald-600 transition-colors"
       >
         Create Your First Portfolio

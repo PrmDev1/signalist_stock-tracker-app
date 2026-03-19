@@ -28,6 +28,44 @@ const formatPrice = (price: number): string => {
   return `$${price.toFixed(2)}`;
 };
 
+function getCategoryTagStyle(category?: string): { label: string; className: string } | null {
+  if (!category) return null;
+
+  const normalized = String(category).trim().toLowerCase();
+  switch (normalized) {
+    case 'growth':
+      return {
+        label: 'Growth',
+        className: 'border border-cyan-500/40 bg-cyan-500/15 text-cyan-300',
+      };
+    case 'dividend':
+      return {
+        label: 'Dividend',
+        className: 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
+      };
+    case 'balanced':
+      return {
+        label: 'Balanced',
+        className: 'border border-violet-500/40 bg-violet-500/15 text-violet-300',
+      };
+    case 'core':
+      return {
+        label: 'Core',
+        className: 'border border-blue-500/40 bg-blue-500/15 text-blue-300',
+      };
+    case 'underperformer':
+      return {
+        label: 'Underperformer',
+        className: 'border border-amber-500/40 bg-amber-500/15 text-amber-300',
+      };
+    default:
+      return {
+        label: category,
+        className: 'border border-gray-500/40 bg-gray-700/30 text-gray-200',
+      };
+  }
+}
+
 export default function StockListItem({
   stock,
   isSelected,
@@ -42,6 +80,7 @@ export default function StockListItem({
       ? ((Number(stock.latestPrice) - Number(stock.yesterdayPrice)) / Number(stock.yesterdayPrice)) * 100
       : 0;
   const isPositive = change >= 0;
+  const categoryTag = getCategoryTagStyle(stock.portfolioCategory);
 
   return (
     <div
@@ -73,9 +112,16 @@ export default function StockListItem({
             {stock.primaryExchange}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-gray-400 truncate group-hover:text-gray-300 transition-colors">
-          {stock.companyName}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2 min-w-0 flex-wrap">
+          <p className="text-xs sm:text-sm text-gray-400 group-hover:text-gray-300 transition-colors truncate">
+            {stock.companyName}
+          </p>
+          {categoryTag ? (
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${categoryTag.className}`}>
+              {categoryTag.label}
+            </span>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-xs px-2 py-1 rounded-full bg-gray-800/60 text-gray-300">
             {stock.sector}

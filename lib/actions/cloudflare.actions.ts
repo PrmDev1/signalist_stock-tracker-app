@@ -380,6 +380,46 @@ export async function getSavedPortfolios(): Promise<{
   }
 }
 
+/**
+ * Server Action: ดึงข้อมูล expectedReturns และ volatilityRisk รายหุ้นจาก explainability
+ */
+export async function getPortfolioExplainability(
+  mvoId: string,
+  initialCapital: number
+): Promise<{
+  expectedReturns: Record<string, number>;
+  volatilityRisk: Record<string, number>;
+} | null> {
+  if (!CLOUDFLARE_BASE_URL || !CLOUDFLARE_API_KEY || !mvoId) return null;
+  try {
+    const url = new URL(`${CLOUDFLARE_BASE_URL}/api/v1/portfolio/allocation/${encodeURIComponent(mvoId)}`);
+    url.searchParams.set('initialCapital', String(Math.max(1, initialCapital)));
+    url.searchParams.set('brokerMinOrder', '5');
+
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { 'API-KEY': CLOUDFLARE_API_KEY, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      explainability?: {
+        expectedReturns?: Record<string, number>;
+        volatilityRisk?: Record<string, number>;
+      };
+    };
+
+    return {
+      expectedReturns: data.explainability?.expectedReturns ?? {},
+      volatilityRisk: data.explainability?.volatilityRisk ?? {},
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getSavedPortfolioById(id: string): Promise<{
   success: boolean;
   portfolio?: SavedPortfolioDetailData;

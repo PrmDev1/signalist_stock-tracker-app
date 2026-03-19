@@ -10,7 +10,7 @@ export default function AddPortfolioModal({ onClose }: Props) {
   const router = useRouter();
 
   const handleCreate = () => {
-    router.push('/portfolio/select-stocks');
+    router.push('/portfolio/presets');
     onClose();
   };
 
@@ -22,12 +22,12 @@ export default function AddPortfolioModal({ onClose }: Props) {
         </h2>
 
         <p className="text-sm text-gray-400 mb-6">
-          Select stocks and optimize your portfolio allocation
+          Pick a portfolio preset to start your setup
         </p>
 
         <div className="bg-neutral-800 p-4 rounded-xl mb-6">
           <p className="text-sm text-gray-300">
-            👛 Choose stocks from our investable universe and use AI-powered optimization to allocate capital efficiently.
+            👛 Start with a strategy preset. Custom Portfolio is available now and will take you directly to Select Asset.
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export default function AddPortfolioModal({ onClose }: Props) {
             onClick={handleCreate}
             className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-600 transition"
           >
-            Next
+            Choose Preset
           </button>
         </div>
       </div>

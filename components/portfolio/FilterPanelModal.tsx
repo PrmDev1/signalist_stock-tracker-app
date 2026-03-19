@@ -1,14 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
-import { CompanyFilter } from '@/lib/actions/portfolio.actions';
+import { X, ChevronRight, ArrowLeft, Check } from 'lucide-react';
+import { CompanyFilter, SectorHierarchyItem } from '@/lib/actions/portfolio.actions';
+
+interface SectorMeta {
+  emoji: string;
+  gradient: string;
+}
+
+function getSectorMeta(officeSector: string): SectorMeta {
+  const s = officeSector.toLowerCase();
+  if (s.includes('technology')) return { emoji: '💻', gradient: 'from-blue-500 to-cyan-400' };
+  if (s.includes('crypto') && !s.includes('finance')) return { emoji: '₿', gradient: 'from-purple-600 to-violet-400' };
+  if (s.includes('energy') && s.includes('transport')) return { emoji: '⚡', gradient: 'from-orange-500 to-amber-400' };
+  if (s.includes('finance') && s.includes('crypto')) return { emoji: '💹', gradient: 'from-violet-500 to-blue-400' };
+  if (s.includes('finance')) return { emoji: '🏦', gradient: 'from-blue-600 to-sky-400' };
+  if (s.includes('international')) return { emoji: '🌐', gradient: 'from-indigo-500 to-purple-400' };
+  if (s.includes('life sciences')) return { emoji: '🧬', gradient: 'from-emerald-500 to-green-400' };
+  if (s.includes('manufacturing')) return { emoji: '🏭', gradient: 'from-slate-500 to-gray-400' };
+  if (s.includes('real estate') || s.includes('construction')) return { emoji: '🏗️', gradient: 'from-rose-500 to-pink-400' };
+  if (s.includes('structured')) return { emoji: '📊', gradient: 'from-sky-500 to-blue-400' };
+  if (s.includes('trade') && s.includes('energy')) return { emoji: '🚚', gradient: 'from-lime-500 to-green-400' };
+  if (s.includes('trade') || s.includes('services')) return { emoji: '🛍️', gradient: 'from-teal-500 to-green-400' };
+  if (s.includes('industrial') || s.includes('applications')) return { emoji: '🔬', gradient: 'from-teal-600 to-cyan-400' };
+  return { emoji: '📁', gradient: 'from-gray-500 to-gray-400' };
+}
+
+function displaySectorName(officeSector: string): string {
+  return officeSector
+    .replace(/^Office of\s+/i, '')
+    .replace(/\s+or\s+Office of\s+/gi, ' / ');
+}
 
 interface FilterPanelModalProps {
   isOpen: boolean;
   onClose: () => void;
   filters: CompanyFilter | null;
   selectedFilters: {
+    officeSector?: string;
     sector?: string;
     exchange?: string;
     filerSize?: string;
@@ -29,339 +59,299 @@ export default function FilterPanelModal({
   onClearAll,
   onConfirm,
 }: FilterPanelModalProps) {
+  const [drillSector, setDrillSector] = useState<SectorHierarchyItem | null>(null);
+
   if (!isOpen) return null;
 
-  const [expandedSections, setExpandedSections] = useState({
-    sector: true,
-    exchange: false,
-    filerSize: false,
-    specialStatus: false,
-  });
+  const hierarchy = filters?.sectorHierarchy ?? [];
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+  const selectedParent = selectedFilters.sector
+    ? hierarchy.find((h) => h.industries.includes(selectedFilters.sector!))
+    : selectedFilters.officeSector
+    ? hierarchy.find((h) => h.officeSector === selectedFilters.officeSector)
+    : undefined;
+
+  const handleIndustrySelect = (industry: string) => {
+    const newValue = selectedFilters.sector === industry ? undefined : industry;
+    // Select specific industry → clear officeSector, set sector
+    onFilterChange('officeSector', undefined);
+    onFilterChange('sector', newValue);
+    if (newValue) {
+      setDrillSector(null);
+      onConfirm();
+    }
   };
 
-  // Get sectors to display (top 10)
-  const sectorsToDisplay = filters?.topSectors || [];
+  const handleApplyOfficeSector = () => {
+    if (!drillSector) return;
+    // Apply whole group → clear sector, set officeSector
+    onFilterChange('sector', undefined);
+    onFilterChange('officeSector', drillSector.officeSector);
+    setDrillSector(null);
+    onConfirm();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-6 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800/50 border-b border-gray-700/50">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300 bg-clip-text text-transparent">
-            🔍 Advanced Filters
-          </h1>
-          <p className="text-xm sm:text-sm text-gray-400 mt-1">
-            Refine your stock search with advanced options
-          </p>
+    <div className="fixed inset-0 z-50 bg-[#07080f] flex flex-col">
+      {/* ── HEADER ── */}
+      <div className="flex items-center gap-3 px-4 pt-12 pb-4 sm:px-6">
+        {drillSector ? (
+          <button
+            onClick={() => setDrillSector(null)}
+            className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-6 h-6 text-white" />
+          </button>
+        ) : null}
+
+        <div className="flex-1 min-w-0">
+          {drillSector ? (
+            <h1 className="text-xl font-bold text-white truncate">
+              {displaySectorName(drillSector.officeSector)}
+            </h1>
+          ) : (
+            <h1 className="text-3xl font-bold text-white">Sectors</h1>
+          )}
         </div>
+
         <button
-          onClick={onClose}
-          className="p-2 sm:p-3 hover:bg-red-500/20 rounded-lg transition-all duration-200 hover:scale-110"
-          aria-label="Close filters"
+          onClick={() => { setDrillSector(null); onClose(); }}
+          className="p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+          aria-label="Close"
         >
-          <X className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400 hover:text-red-400 transition-colors" />
+          <X className="w-6 h-6 text-gray-400" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-gray-900 px-4 py-6 sm:px-6">
-        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-5">
-          {/* Sector Filter */}
-          {sectorsToDisplay && sectorsToDisplay.length > 0 && (
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-800/30 border border-gray-700/50 rounded-xl overflow-hidden hover:border-gray-700 transition-all duration-200 group">
-              <button
-                onClick={() => toggleSection('sector')}
-                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 hover:bg-gray-800/60 transition-all duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🏆</span>
-                  <div className="text-left">
-                    <h2 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                      Recommand Sectors
-                    </h2>
-                    <p className="text-xs text-gray-400">Most popular industries</p>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                    expandedSections.sector ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {expandedSections.sector && (
-                <div className="border-t border-gray-700/30 px-4 sm:px-5 py-4 space-y-2 bg-gray-800/20">
-                  {sectorsToDisplay.map((sector) => (
-                    <label
-                      key={sector}
-                      className="flex items-center gap-3 cursor-pointer p-2.5 hover:bg-gray-700/40 rounded-lg transition-all duration-200 group/item"
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                          selectedFilters.sector === sector
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-500 to-cyan-500'
-                            : 'border-gray-600 hover:border-blue-400 bg-gray-800'
-                        }`}
-                        onClick={() => onFilterChange('sector', selectedFilters.sector === sector ? undefined : sector)}
-                      >
-                        {selectedFilters.sector === sector && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
-                      </div>
-                      <span
-                        className="text-sm sm:text-base text-gray-300 group-hover/item:text-white transition-colors flex-1 cursor-pointer"
-                        onClick={() => onFilterChange('sector', selectedFilters.sector === sector ? undefined : sector)}
-                      >
-                        {sector}
-                      </span>
-                      {selectedFilters.sector === sector && (
-                        <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">Selected</span>
-                      )}
-                    </label>
-                  ))}
-
-                  {selectedFilters.sector && (
+      {/* ── CONTENT ── */}
+      <div className="flex-1 overflow-y-auto">
+        {drillSector ? (
+          /* ── Industry drill-down ── */
+          <div>
+            <p className="px-4 sm:px-6 pt-1 pb-3 text-sm text-gray-500">
+              {drillSector.industries.length} industries
+            </p>
+            <ul className="divide-y divide-white/5">
+              {drillSector.industries.map((industry) => {
+                const isSelected = selectedFilters.sector === industry;
+                return (
+                  <li key={industry}>
                     <button
-                      onClick={() => onFilterChange('sector', undefined)}
-                      className="mt-3 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors w-full text-center py-2 hover:bg-blue-500/10 rounded-lg"
+                      onClick={() => handleIndustrySelect(industry)}
+                      className="w-full flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/5 active:bg-white/10 transition-colors text-left"
                     >
-                      ✕ Clear Sector
+                      <span className={`text-sm leading-snug pr-4 ${isSelected ? 'text-blue-300 font-semibold' : 'text-gray-200'}`}>
+                        {industry.charAt(0) + industry.slice(1).toLowerCase()}
+                      </span>
+                      {isSelected && (
+                        <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                      )}
                     </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : (
+          /* ── Sector top-level list (Dime-style) ── */
+          <div>
+            {/* Active filter banner */}
+            {(selectedFilters.sector || selectedFilters.officeSector) && (
+              <div className="mx-4 sm:mx-6 mt-2 mb-4 flex items-center justify-between bg-blue-500/15 border border-blue-500/30 rounded-2xl px-4 py-3">
+                <div className="min-w-0 flex-1 mr-3">
+                  <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Active Filter</p>
+                  <p className="text-sm text-white mt-0.5 truncate">
+                    {selectedFilters.sector
+                      ? selectedFilters.sector.charAt(0) + selectedFilters.sector.slice(1).toLowerCase()
+                      : selectedFilters.officeSector
+                      ? displaySectorName(selectedFilters.officeSector)
+                      : ''}
+                  </p>
+                  {selectedParent && !selectedFilters.officeSector && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {displaySectorName(selectedParent.officeSector)}
+                    </p>
                   )}
                 </div>
-              )}
-            </div>
-          )}
+                <button
+                  onClick={() => {
+                    onFilterChange('sector', undefined);
+                    onFilterChange('officeSector', undefined);
+                  }}
+                  className="text-xs text-red-400 hover:text-red-300 font-semibold bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
-          {/* Exchange Filter */}
-          {filters?.exchanges && filters.exchanges.length > 0 && (
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-800/30 border border-gray-700/50 rounded-xl overflow-hidden hover:border-gray-700 transition-all duration-200 group">
-              <button
-                onClick={() => toggleSection('exchange')}
-                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 hover:bg-gray-800/60 transition-all duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📊</span>
-                  <div className="text-left">
-                    <h2 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                      Exchange
-                    </h2>
-                    <p className="text-xs text-gray-400">Stock market</p>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                    expandedSections.exchange ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {expandedSections.exchange && (
-                <div className="border-t border-gray-700/30 px-4 sm:px-5 py-4 space-y-2 bg-gray-800/20">
-                  {filters.exchanges.map((exchange) => (
-                    <label
-                      key={exchange}
-                      className="flex items-center gap-3 cursor-pointer p-2.5 hover:bg-gray-700/40 rounded-lg transition-all duration-200 group/item"
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                          selectedFilters.exchange === exchange
-                            ? 'border-green-500 bg-gradient-to-br from-green-500 to-emerald-500'
-                            : 'border-gray-600 hover:border-green-400 bg-gray-800'
-                        }`}
-                        onClick={() => onFilterChange('exchange', selectedFilters.exchange === exchange ? undefined : exchange)}
-                      >
-                        {selectedFilters.exchange === exchange && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
-                      </div>
-                      <span
-                        className="text-sm sm:text-base text-gray-300 group-hover/item:text-white transition-colors flex-1 cursor-pointer"
-                        onClick={() => onFilterChange('exchange', selectedFilters.exchange === exchange ? undefined : exchange)}
-                      >
-                        {exchange}
-                      </span>
-                      {selectedFilters.exchange === exchange && (
-                        <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">Selected</span>
-                      )}
-                    </label>
-                  ))}
-
-                  {selectedFilters.exchange && (
+            {/* Sector list */}
+            <ul className="divide-y divide-white/5">
+              {hierarchy.map((item) => {
+                const meta = getSectorMeta(item.officeSector);
+                const isActive = selectedParent?.officeSector === item.officeSector;
+                return (
+                  <li key={item.officeSector}>
                     <button
-                      onClick={() => onFilterChange('exchange', undefined)}
-                      className="mt-3 text-sm text-green-400 hover:text-green-300 font-medium transition-colors w-full text-center py-2 hover:bg-green-500/10 rounded-lg"
+                      onClick={() => setDrillSector(item)}
+                      className="w-full flex items-center gap-4 px-4 sm:px-6 py-4 hover:bg-white/5 active:bg-white/10 transition-colors text-left"
                     >
-                      ✕ Clear Exchange
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Filer Size Filter */}
-          {filters?.filerSizes && filters.filerSizes.length > 0 && (
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-800/30 border border-gray-700/50 rounded-xl overflow-hidden hover:border-gray-700 transition-all duration-200 group">
-              <button
-                onClick={() => toggleSection('filerSize')}
-                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 hover:bg-gray-800/60 transition-all duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📈</span>
-                  <div className="text-left">
-                    <h2 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                      Company Size
-                    </h2>
-                    <p className="text-xs text-gray-400">Market capitalization</p>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                    expandedSections.filerSize ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {expandedSections.filerSize && (
-                <div className="border-t border-gray-700/30 px-4 sm:px-5 py-4 space-y-2 bg-gray-800/20">
-                  {filters.filerSizes.map((size) => (
-                    <label
-                      key={size}
-                      className="flex items-center gap-3 cursor-pointer p-2.5 hover:bg-gray-700/40 rounded-lg transition-all duration-200 group/item"
-                    >
+                      {/* Colored icon circle */}
                       <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                          selectedFilters.filerSize === size
-                            ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500'
-                            : 'border-gray-600 hover:border-purple-400 bg-gray-800'
-                        }`}
-                        onClick={() => onFilterChange('filerSize', selectedFilters.filerSize === size ? undefined : size)}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${meta.gradient}`}
                       >
-                        {selectedFilters.filerSize === size && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
+                        <span className="text-xl leading-none">{meta.emoji}</span>
                       </div>
-                      <span
-                        className="text-sm sm:text-base text-gray-300 group-hover/item:text-white transition-colors flex-1 cursor-pointer"
-                        onClick={() => onFilterChange('filerSize', selectedFilters.filerSize === size ? undefined : size)}
-                      >
-                        {size}
-                      </span>
-                      {selectedFilters.filerSize === size && (
-                        <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">Selected</span>
+
+                      {/* Name + industry count */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-base font-semibold truncate ${isActive ? 'text-blue-300' : 'text-white'}`}>
+                          {displaySectorName(item.officeSector)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {item.industries.length} industries
+                        </p>
+                      </div>
+
+                      {/* Active indicator */}
+                      {isActive && (
+                        <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
                       )}
-                    </label>
-                  ))}
 
-                  {selectedFilters.filerSize && (
-                    <button
-                      onClick={() => onFilterChange('filerSize', undefined)}
-                      className="mt-3 text-sm text-purple-400 hover:text-purple-300 font-medium transition-colors w-full text-center py-2 hover:bg-purple-500/10 rounded-lg"
-                    >
-                      ✕ Clear Size
+                      <ChevronRight className="w-5 h-5 text-gray-600 flex-shrink-0" />
                     </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                  </li>
+                );
+              })}
+            </ul>
 
-          {/* Special Status (SRC & EGC) */}
-          {filters?.specialStatuses && filters.specialStatuses.length > 0 && (
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-800/30 border border-gray-700/50 rounded-xl overflow-hidden hover:border-gray-700 transition-all duration-200 group">
-              <button
-                onClick={() => toggleSection('specialStatus')}
-                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 hover:bg-gray-800/60 transition-all duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">⭐</span>
-                  <div className="text-left">
-                    <h2 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                      Special Status
-                    </h2>
-                    <p className="text-xs text-gray-400">SRC & EGC companies</p>
+            {/* ── More Filters ── */}
+            {((filters?.exchanges && filters.exchanges.length > 0) ||
+              (filters?.specialStatuses && filters.specialStatuses.length > 0) ||
+              (filters?.filerSizes && filters.filerSizes.length > 0)) && (
+              <div className="mx-4 sm:mx-6 mt-6 mb-8 space-y-4">
+                <h2 className="text-lg font-bold text-white">More Filters</h2>
+
+                {/* Exchange */}
+                {filters?.exchanges && filters.exchanges.length > 0 && (
+                  <div className="bg-white/5 rounded-2xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Exchange</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {filters.exchanges.map((exchange) => (
+                        <button
+                          key={exchange}
+                          onClick={() =>
+                            onFilterChange('exchange', selectedFilters.exchange === exchange ? undefined : exchange)
+                          }
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            selectedFilters.exchange === exchange
+                              ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                              : 'bg-white/10 text-gray-300 hover:bg-white/15'
+                          }`}
+                        >
+                          {exchange}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                    expandedSections.specialStatus ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
+                )}
 
-              {expandedSections.specialStatus && (
-                <div className="border-t border-gray-700/30 px-4 sm:px-5 py-4 space-y-2 bg-gray-800/20">
-                  {filters.specialStatuses.map((status) => (
-                    <label
-                      key={status.id}
-                      className="flex items-center gap-3 cursor-pointer p-2.5 hover:bg-gray-700/40 rounded-lg transition-all duration-200 group/item"
-                    >
-                      <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                          (status.id === 'isSmallerReporting'
-                            ? selectedFilters.isSmallerReporting
-                            : selectedFilters.isEmergingGrowth)
-                            ? 'border-yellow-500 bg-gradient-to-br from-yellow-500 to-orange-500'
-                            : 'border-gray-600 hover:border-yellow-400 bg-gray-800'
-                        }`}
-                        onClick={() => {
-                          const currentValue = status.id === 'isSmallerReporting'
-                            ? selectedFilters.isSmallerReporting
-                            : selectedFilters.isEmergingGrowth;
-                          onFilterChange(status.id, !currentValue);
-                        }}
-                      >
-                        {(status.id === 'isSmallerReporting'
-                          ? selectedFilters.isSmallerReporting
-                          : selectedFilters.isEmergingGrowth) && (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      <span
-                        className="text-sm sm:text-base text-gray-300 group-hover/item:text-white transition-colors flex-1 cursor-pointer"
-                        onClick={() => {
-                          const currentValue = status.id === 'isSmallerReporting'
-                            ? selectedFilters.isSmallerReporting
-                            : selectedFilters.isEmergingGrowth;
-                          onFilterChange(status.id, !currentValue);
-                        }}
-                      >
-                        {status.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                {/* Filer Size */}
+                {filters?.filerSizes && filters.filerSizes.length > 0 && (
+                  <div className="bg-white/5 rounded-2xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Company Size</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {filters.filerSizes.map((size) => (
+                        <button
+                          key={size}
+                          onClick={() =>
+                            onFilterChange('filerSize', selectedFilters.filerSize === size ? undefined : size)
+                          }
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            selectedFilters.filerSize === size
+                              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                              : 'bg-white/10 text-gray-300 hover:bg-white/15'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Special Status */}
+                {filters?.specialStatuses && filters.specialStatuses.length > 0 && (
+                  <div className="bg-white/5 rounded-2xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Special Status</h3>
+                    <div className="space-y-3">
+                      {filters.specialStatuses.map((status) => {
+                        const isChecked =
+                          status.id === 'isSmallerReporting'
+                            ? selectedFilters.isSmallerReporting ?? false
+                            : selectedFilters.isEmergingGrowth ?? false;
+                        return (
+                          <button
+                            key={status.id}
+                            onClick={() => onFilterChange(status.id, !isChecked)}
+                            className="w-full flex items-center gap-3 text-left"
+                          >
+                            <div
+                              className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                                isChecked
+                                  ? 'bg-blue-500 border-blue-500'
+                                  : 'border-gray-600 bg-transparent'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-4 h-4 text-white" />}
+                            </div>
+                            <span className="text-sm text-gray-200">{status.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Footer Actions */}
-      <div className="border-t border-gray-700/50 bg-gradient-to-t from-gray-900 to-gray-900/50 px-4 py-4 sm:px-6 sm:py-5 space-y-3 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <button
-            onClick={onClearAll}
-            className="flex-1 px-4 py-3 text-red-400 bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/30 rounded-lg font-bold hover:from-red-500/20 hover:to-red-600/20 hover:border-red-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20 active:scale-95"
-          >
-            🗑️ CLEAR ALL
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-bold hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/30 active:scale-95"
-          >
-            ✓ APPLY FILTERS
-          </button>
-        </div>
+      {/* ── FOOTER ── */}
+      <div className="border-t border-white/10 px-4 py-4 sm:px-6 bg-[#07080f]">
+        {drillSector ? (
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDrillSector(null)}
+              className="flex-1 py-3.5 rounded-2xl border border-white/15 text-gray-300 font-semibold hover:bg-white/5 transition-colors text-sm"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleApplyOfficeSector}
+              className="flex-1 py-3.5 rounded-2xl bg-white text-black font-bold hover:bg-gray-100 transition-colors text-sm"
+            >
+              Apply All {displaySectorName(drillSector.officeSector)}
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <button
+              onClick={() => { onClearAll(); setDrillSector(null); }}
+              className="flex-1 py-3.5 rounded-2xl border border-white/15 text-gray-300 font-semibold hover:bg-white/5 transition-colors text-sm"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={() => { setDrillSector(null); onConfirm(); }}
+              className="flex-1 py-3.5 rounded-2xl bg-white text-black font-bold hover:bg-gray-100 transition-colors text-sm"
+            >
+              Apply Filters
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

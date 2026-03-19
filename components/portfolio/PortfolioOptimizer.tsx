@@ -403,6 +403,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
               selectedStocks={selectedStocks}
               riskTolerance={riskTolerance}
               investmentHorizon={investmentHorizon}
+              modelName={modelName}
               onRemoveStock={handleRemoveStock}
             />
           </div>

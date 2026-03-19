@@ -117,14 +117,14 @@ export default function ParameterPanel({
 
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-gray-300">
-            ระยะเวลาลงทุน
+            ระยะเวลาข้อมูลย้อนหลัง
           </label>
           <Select
             value={investmentHorizon}
             onValueChange={(value) => setInvestmentHorizon(value as typeof investmentHorizon)}
           >
             <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-700 text-white">
-              <SelectValue placeholder="เลือกช่วงเวลา" />
+              <SelectValue placeholder="เลือกจำนวนปีย้อนหลัง" />
             </SelectTrigger>
             <SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
               <SelectItem value="short">สั้น</SelectItem>
@@ -132,7 +132,7 @@ export default function ParameterPanel({
               <SelectItem value="long">ยาว</SelectItem>
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-gray-500">ระบบใช้ข้อมูลย้อนหลัง {lookbackYears} ปี</p>
+          <p className="mt-1 text-xs text-gray-500">ระบบจะนำข้อมูลย้อนหลัง {lookbackYears} ปีมาวิเคราะห์</p>
         </div>
 
         <div>

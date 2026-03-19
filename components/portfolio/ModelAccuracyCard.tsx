@@ -28,11 +28,11 @@ function MetricBar({ label, accuracy }: { label: string; accuracy: number }) {
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs text-gray-300">
-        <span>{label}</span>
-        <span className="font-semibold text-gray-100">{accuracy.toFixed(1)}%</span>
+      <div className="mb-1.5 flex items-center justify-between text-sm text-gray-200 sm:text-base">
+        <span className="font-medium">{label}</span>
+        <span className="text-lg font-semibold text-gray-100 sm:text-2xl">{accuracy.toFixed(1)}%</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+      <div className="h-3 w-full overflow-hidden rounded-full bg-gray-700 sm:h-3.5">
         <div className={`h-full ${tone} transition-all`} style={{ width: `${accuracy}%` }} />
       </div>
     </div>
@@ -80,35 +80,35 @@ export default function ModelAccuracyCard({
   const riskDelta = realizedMetrics.realizedAnnualVolatilityPct - expectedMetrics.expectedAnnualVolatilityPct;
 
   return (
-    <section className="rounded-2xl border border-gray-700 bg-gray-800/60 p-4 sm:p-5">
-      <h3 className="text-lg font-semibold text-white">ประเมินความแม่นยำของโมเดล</h3>
+    <section className="rounded-2xl border border-gray-700 bg-gray-800/60 p-5 sm:p-6">
+      <h3 className="text-2xl font-semibold leading-tight text-white sm:text-3xl">ประเมินความแม่นยำของโมเดล</h3>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-3">
-          <p className="text-xs uppercase tracking-wide text-gray-400">ผลตอบแทนที่โมเดลคาดไว้</p>
-          <p className="mt-1 text-sm text-gray-200">{expectedMetrics.expectedAnnualReturnPct.toFixed(2)}%</p>
-          <p className="mt-2 text-xs text-gray-400">ค่าที่เกิดขึ้นจริง: {realizedMetrics.realizedAnnualReturnPct.toFixed(2)}%</p>
-          <p className={`mt-1 text-xs font-medium ${returnDelta >= 0 ? "text-emerald-300" : "text-orange-300"}`}>
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+          <p className="text-sm uppercase tracking-wide text-gray-300">ผลตอบแทนที่โมเดลคาดไว้</p>
+          <p className="mt-1.5 text-4xl font-semibold leading-none text-gray-100 sm:text-[2.2rem]">{expectedMetrics.expectedAnnualReturnPct.toFixed(2)}%</p>
+          <p className="mt-3 text-lg text-gray-200">ค่าที่เกิดขึ้นจริง: {realizedMetrics.realizedAnnualReturnPct.toFixed(2)}%</p>
+          <p className={`mt-1.5 text-xl font-semibold ${returnDelta >= 0 ? "text-emerald-300" : "text-orange-300"}`}>
             ส่วนต่าง: {returnDelta >= 0 ? "+" : ""}{returnDelta.toFixed(2)}%
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-3">
-          <p className="text-xs uppercase tracking-wide text-gray-400">ความผันผวนที่โมเดลคาดไว้</p>
-          <p className="mt-1 text-sm text-gray-200">{expectedMetrics.expectedAnnualVolatilityPct.toFixed(2)}%</p>
-          <p className="mt-2 text-xs text-gray-400">ค่าที่เกิดขึ้นจริง: {realizedMetrics.realizedAnnualVolatilityPct.toFixed(2)}%</p>
-          <p className={`mt-1 text-xs font-medium ${riskDelta <= 0 ? "text-emerald-300" : "text-orange-300"}`}>
+        <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+          <p className="text-sm uppercase tracking-wide text-gray-300">ความผันผวนที่โมเดลคาดไว้</p>
+          <p className="mt-1.5 text-4xl font-semibold leading-none text-gray-100 sm:text-[2.2rem]">{expectedMetrics.expectedAnnualVolatilityPct.toFixed(2)}%</p>
+          <p className="mt-3 text-lg text-gray-200">ค่าที่เกิดขึ้นจริง: {realizedMetrics.realizedAnnualVolatilityPct.toFixed(2)}%</p>
+          <p className={`mt-1.5 text-xl font-semibold ${riskDelta <= 0 ? "text-emerald-300" : "text-orange-300"}`}>
             ส่วนต่าง: {riskDelta >= 0 ? "+" : ""}{riskDelta.toFixed(2)}%
           </p>
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-6 space-y-4">
         <MetricBar label="ความแม่นยำด้านผลตอบแทน" accuracy={returnAccuracy} />
         <MetricBar label="ความแม่นยำด้านความเสี่ยง" accuracy={riskAccuracy} />
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-gray-300">
+      <div className="mt-5 space-y-3 text-lg leading-relaxed text-gray-200">
         {educationalInsights?.modelAccuracyReturnMsg ? <p>{educationalInsights.modelAccuracyReturnMsg}</p> : null}
         {educationalInsights?.modelAccuracyRiskMsg ? <p>{educationalInsights.modelAccuracyRiskMsg}</p> : null}
       </div>

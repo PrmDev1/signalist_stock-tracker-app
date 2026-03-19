@@ -20,6 +20,7 @@ export default function StockSelectorContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<CompanyFilter | null>(null);
   const [activeFilters, setActiveFilters] = useState<{
+    officeSector?: string;
     sector?: string;
     exchange?: string;
     filerSize?: string;
@@ -93,6 +94,7 @@ export default function StockSelectorContent() {
 
       const response = await getPortfolioTickers(currentPage, pageSize, {
         search: searchTerm || undefined,
+        officeSector: activeFilters.officeSector,
         sector: activeFilters.sector,
         exchange: activeFilters.exchange,
         filerSize: activeFilters.filerSize,

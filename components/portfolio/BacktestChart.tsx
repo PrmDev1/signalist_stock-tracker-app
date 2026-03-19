@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import type { BacktestAndMetrics } from "@/components/portfolio/analysis-types";
+import InfoPopover from "@/components/portfolio/optimizer/InfoPopover";
 
 interface BacktestChartProps {
   backtestAndMetrics?: BacktestAndMetrics | null;
@@ -45,7 +46,7 @@ function toChartData(backtest: BacktestAndMetrics): BacktestChartPoint[] {
   const rows: BacktestChartPoint[] = [];
   for (let index = 0; index < maxLength; index += 1) {
     rows.push({
-      date: dates[index] ?? "",
+      date: dates[index] ?? '',
       portfolioValue: portfolioValue[index] ?? portfolioValue[portfolioValue.length - 1] ?? 0,
       spyValue: spy[index] ?? spy[spy.length - 1] ?? 0,
       bilValue: bil[index] ?? bil[bil.length - 1] ?? 0,
@@ -71,6 +72,8 @@ export default function BacktestChart({ backtestAndMetrics, loading = false }: B
     return toChartData(backtestAndMetrics);
   }, [backtestAndMetrics]);
 
+  const historicalMaxDrawdownPct = backtestAndMetrics?.realizedMetrics?.historicalMaxDrawdownPct;
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -85,9 +88,25 @@ export default function BacktestChart({ backtestAndMetrics, loading = false }: B
 
   return (
     <section className="rounded-2xl border border-gray-700 bg-gray-800/60 p-4 sm:p-5">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-white">กราฟย้อนหลัง (Backtest)</h3>
-        <p className="mt-1 text-sm text-gray-400">เปรียบเทียบมูลค่าพอร์ตกับ SPY และ BIL ตามข้อมูลอดีต</p>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">กราฟย้อนหลัง (Backtest)</h3>
+          <p className="mt-1 text-sm text-gray-400">เปรียบเทียบมูลค่าพอร์ตกับ SPY และ BIL ตามข้อมูลอดีต</p>
+        </div>
+        {typeof historicalMaxDrawdownPct === "number" && (
+          <div className="flex items-start gap-2">
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-right">
+              <p className="text-xs text-red-300">Max Drawdown</p>
+              <p className="mt-0.5 text-base font-semibold text-red-200">
+                {historicalMaxDrawdownPct.toFixed(2)}%
+              </p>
+            </div>
+            <InfoPopover
+              title="Max Drawdown"
+              description="ช่วงที่พอร์ตปรับตัวลงจากจุดสูงสุดมากที่สุดในอดีต"
+            />
+          </div>
+        )}
       </div>
 
       <div className="h-[320px] w-full sm:h-[360px]">

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { getSavedPortfolioById } from '@/lib/actions/cloudflare.actions';
+import { getSavedPortfolioById, getPortfolioExplainability } from '@/lib/actions/cloudflare.actions';
 import { getPortfolioTickers } from '@/lib/actions/portfolio.actions';
 import BacktestChart from '@/components/portfolio/BacktestChart';
 import MonteCarloProjection from '@/components/portfolio/MonteCarloProjection';
@@ -113,7 +113,12 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
       color: palette[index % palette.length],
     };
   });
-  const formattedDate = new Date(portfolio.updatedAt).toLocaleDateString('en-US', {
+  // Fetch per-ticker explainability (expectedReturns + volatilityRisk) in parallel
+  const explainability = portfolio.mvoId
+    ? await getPortfolioExplainability(portfolio.mvoId, initialCapitalForSimulation)
+    : null;
+
+  const formattedDate = new Date(portfolio.updatedAt).toLocaleDateString('th-TH', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -128,14 +133,14 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-white"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Portfolio
+            กลับหน้าพอร์ตโฟลิโอ
           </Link>
 
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-300">{portfolio.name}</span>
-            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-400">{holdings.length} Assets</span>
-            <span className={`rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 ${riskClass}`}>Risk {riskLabel}</span>
-            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-500">Updated {formattedDate}</span>
+            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-400">{holdings.length} สินทรัพย์</span>
+            <span className={`rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 ${riskClass}`}>ความเสี่ยง {riskLabel}</span>
+            <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-500">อัปเดต {formattedDate}</span>
           </div>
         </div>
 
@@ -150,11 +155,11 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_360px]">
           <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Portfolio Holdings</h3>
+              <h3 className="text-lg font-semibold text-white">สินทรัพย์ในพอร์ตโฟลิโอ</h3>
               <div className="inline-flex items-center gap-4 text-xs">
-                <span className="text-gray-400">Expected Return <span className="ml-1 text-[#00e7c2]">+{expectedReturnPercent.toFixed(2)}%</span></span>
-                <span className="text-gray-400">Volatility <span className="ml-1 text-[#ffbf66]">{volatilityPercent.toFixed(2)}%</span></span>
-                <span className="text-gray-400">Capital <span className="ml-1 text-white">${totalAllocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
+                <span className="text-gray-400">ผลตอบแทนคาด <span className="ml-1 text-[#00e7c2]">+{expectedReturnPercent.toFixed(2)}%</span></span>
+                <span className="text-gray-400">ความผันผวน <span className="ml-1 text-[#ffbf66]">{volatilityPercent.toFixed(2)}%</span></span>
+                <span className="text-gray-400">เงินทุน <span className="ml-1 text-white">${totalAllocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
               </div>
             </div>
 
@@ -162,12 +167,12 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
               <table className="w-full min-w-[820px] text-left">
                 <thead className="border-b border-[#1f2a3d] text-xs uppercase tracking-wide text-gray-500">
                   <tr>
-                    <th className="px-3 py-2.5">Ticker</th>
-                    <th className="px-3 py-2.5">Company Name</th>
-                    <th className="px-3 py-2.5">Exchange</th>
-                    <th className="px-3 py-2.5">Sector</th>
-                    <th className="px-3 py-2.5">Weight</th>
-                    <th className="px-3 py-2.5">Allocated Amount</th>
+                    <th className="px-3 py-2.5">หุ้น</th>
+                    <th className="px-3 py-2.5">ชื่อบริษัท</th>
+                    <th className="px-3 py-2.5">ตลาด</th>
+                    <th className="px-3 py-2.5">หมวดหุ้น</th>
+                    <th className="px-3 py-2.5">น้ำหนัก</th>
+                    <th className="px-3 py-2.5">เงินที่จัดสรร</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -192,8 +197,10 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
           </div>
 
           <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
-            <h3 className="mb-2 text-sm font-semibold text-white">Allocation</h3>
+            <h3 className="mb-2 text-sm font-semibold text-white">สัดส่วนการลงทุน</h3>
             <PortfolioAllocationChart
+              expectedReturns={explainability?.expectedReturns}
+              volatilityRisk={explainability?.volatilityRisk}
               data={holdings.map((row) => ({
                 ticker: row.ticker,
                 companyName: row.companyName,

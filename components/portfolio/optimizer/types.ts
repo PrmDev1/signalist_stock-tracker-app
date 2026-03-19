@@ -44,6 +44,7 @@ export interface PreviewPanelProps {
   selectedStocks: FilteredStock[];
   riskTolerance: RiskTolerance;
   investmentHorizon: InvestmentHorizon;
+  modelName: 'mvo' | 'semi';
   onRemoveStock: (symbol: string) => void;
 }
 

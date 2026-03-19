@@ -5,6 +5,7 @@ export default function PreviewPanel({
   selectedStocks,
   riskTolerance,
   investmentHorizon,
+  modelName,
   onRemoveStock,
 }: PreviewPanelProps) {
   const riskLabel =
@@ -17,6 +18,7 @@ export default function PreviewPanel({
         : 'text-red-300';
   const horizonLabel =
     investmentHorizon === 'short' ? 'สั้น' : investmentHorizon === 'medium' ? 'กลาง' : 'ยาว';
+  const modelLabel = modelName === 'mvo' ? 'MVO (Mean-Variance)' : 'Semi-Variance';
 
   const formatPrice = (price?: number) => {
     if (!Number.isFinite(price)) return 'N/A';
@@ -38,7 +40,8 @@ export default function PreviewPanel({
             <span className="text-gray-500">ความเสี่ยง:</span>{' '}
             <span className={`font-semibold ${riskColorClass}`}>{riskLabel}</span>
           </p>
-          <p><span className="text-gray-500">ระยะลงทุน:</span> {horizonLabel}</p>
+          <p><span className="text-gray-500">ระยะเวลาข้อมูลย้อนหลัง:</span> {horizonLabel}</p>
+          <p><span className="text-gray-500">โมเดลที่เลือก:</span> {modelLabel}</p>
           <p><span className="text-gray-500">จำนวนหุ้นที่เลือก:</span> {selectedStocks.length} ตัว</p>
         </div>
       </section>

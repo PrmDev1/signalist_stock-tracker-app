@@ -14,6 +14,7 @@ export interface CompanyProfile {
   companyName: string;
   primaryExchange: string;
   sector: string;
+  portfolioCategory?: 'Growth' | 'Dividend' | 'Balanced' | 'Core' | 'Underperformer' | string;
   filerSize: string;
   isSmallerReporting: boolean;
   isEmergingGrowth: boolean;
@@ -26,12 +27,18 @@ export interface SpecialStatus {
   label: string;
 }
 
+export interface SectorHierarchyItem {
+  officeSector: string;
+  industries: string[];
+}
+
 export interface CompanyFilter {
   sectors: string[];
   topSectors: string[]; // Top 10 most popular sectors
   exchanges: string[];
   filerSizes: string[];
   specialStatuses: SpecialStatus[];
+  sectorHierarchy?: SectorHierarchyItem[];
 }
 
 export interface TickersResponse {
@@ -44,7 +51,12 @@ export interface TickersResponse {
 
 export interface FiltersResponse {
   status: string;
-  filters: CompanyFilter;
+  filters: {
+    exchanges: string[];
+    sectorHierarchy: SectorHierarchyItem[];
+    filerSizes: string[];
+    specialStatuses: SpecialStatus[];
+  };
 }
 
 // ---- Server Actions ----
@@ -96,26 +108,19 @@ export async function getPortfolioFilters(): Promise<{
 
     const data: FiltersResponse = await res.json();
 
-    // Ensure topSectors is populated with the most popular sectors
-    const filters = data.filters;
-    const TOP_10_SECTORS = [
-      'ELECTRONIC COMPUTERS',
-      'SEMICONDUCTORS & RELATED DEVICES',
-      'COMPUTER COMMUNICATIONS EQUIPMENT',
-      'SERVICES-PREPACKAGED SOFTWARE',
-      'PHARMACEUTICAL PREPARATIONS',
-      'COMMERCIAL BANKS, NEC',
-      'CRUDE PETROLEUM & NATURAL GAS',
-      'AIR TRANSPORTATION, SCHEDULED',
-      'RETAIL-CATALOG & MAIL-ORDER HOUSES',
-      'RADIO & TV BROADCASTING & COMMUNICATIONS EQUIPMENT'
-    ];
-    
-    filters.topSectors = TOP_10_SECTORS;
+    const raw = data.filters;
+    const filters: CompanyFilter = {
+      sectors: [],
+      topSectors: [],
+      exchanges: raw.exchanges ?? [],
+      filerSizes: raw.filerSizes ?? [],
+      specialStatuses: raw.specialStatuses ?? [],
+      sectorHierarchy: raw.sectorHierarchy ?? [],
+    };
 
     return {
       success: true,
-      filters: filters,
+      filters,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -135,6 +140,7 @@ export async function getPortfolioTickers(
   page: number = 1,
   size: number = 50,
   filters?: {
+    officeSector?: string;
     sector?: string;
     exchange?: string;
     search?: string;
@@ -171,6 +177,7 @@ export async function getPortfolioTickers(
     url.searchParams.append('size', size.toString());
 
     if (filters) {
+      if (filters.officeSector) url.searchParams.append('officeSector', filters.officeSector);
       if (filters.sector) url.searchParams.append('sector', filters.sector);
       if (filters.exchange) url.searchParams.append('exchange', filters.exchange);
       if (filters.search) url.searchParams.append('search', filters.search);
