@@ -13,6 +13,7 @@ interface PortfolioPageContentProps {
 
 export default function PortfolioPageContent({ portfolios }: PortfolioPageContentProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [portfolioItems, setPortfolioItems] = useState(portfolios);
 
   return (
     <div className="min-h-screen">
@@ -39,12 +40,18 @@ export default function PortfolioPageContent({ portfolios }: PortfolioPageConten
       </div>
 
       {/* Content */}
-      {portfolios.length === 0 ? (
+      {portfolioItems.length === 0 ? (
         <PortfolioEmptyState />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {portfolios.map((portfolio) => (
-            <PortfolioCard key={portfolio.id} {...portfolio} />
+          {portfolioItems.map((portfolio) => (
+            <PortfolioCard
+              key={portfolio.id}
+              {...portfolio}
+              onEditSave={(updatedPortfolio) => {
+                setPortfolioItems((current) => current.map((item) => item.id === updatedPortfolio.id ? { ...item, ...updatedPortfolio } : item));
+              }}
+            />
           ))}
         </div>
       )}

@@ -5,10 +5,13 @@ export interface PortfolioItem extends Document {
   userId: string;
   name: string;
   tickers: string[];
+  tickerTags?: Record<string, string>;
   mvoId?: string;
   initialCapital?: number;
   monthlyDca?: number;
   targetYears?: number;
+  lookbackYears?: number;
+  requireDiversification?: boolean;
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   expectedReturn: number;
   volatility: number;
@@ -33,10 +36,18 @@ const PortfolioSchema = new Schema<PortfolioItem>(
     userId: { type: String, required: true, index: true },
     name: { type: String, required: true, trim: true },
     tickers: [{ type: String, required: true, uppercase: true, trim: true }],
+    tickerTags: {
+      type: Map,
+      of: String,
+      required: false,
+      default: {},
+    },
     mvoId: { type: String, required: false, trim: true },
     initialCapital: { type: Number, required: false },
     monthlyDca: { type: Number, required: false, default: 0, min: 0 },
     targetYears: { type: Number, required: false, default: 10, min: 1, max: 20 },
+    lookbackYears: { type: Number, required: false, default: 5, min: 1, max: 20 },
+    requireDiversification: { type: Boolean, required: false, default: true },
     allocations: {
       type: Map,
       of: AllocationSchema,

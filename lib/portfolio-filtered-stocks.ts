@@ -3,6 +3,7 @@ export interface FilteredStock {
   name: string;
   sector: string;
   marketCap: number;
+  tag?: string;
   latestPrice?: number;
   dayChangePercent?: number;
 }
@@ -15,6 +16,7 @@ function normalizeFilteredStock(stock: FilteredStock): FilteredStock {
     name: stock.name.trim(),
     sector: stock.sector.trim(),
     marketCap: stock.marketCap,
+    tag: typeof stock.tag === 'string' && stock.tag.trim().length > 0 ? stock.tag.trim().toLowerCase() : undefined,
     latestPrice: stock.latestPrice,
     dayChangePercent: stock.dayChangePercent,
   };
@@ -56,7 +58,8 @@ export function getFilteredStocksFromSession(): FilteredStock[] {
         stock.symbol.length > 0 &&
         typeof stock?.name === 'string' &&
         typeof stock?.sector === 'string' &&
-        typeof stock?.marketCap === 'number'
+        typeof stock?.marketCap === 'number' &&
+        (typeof stock?.tag === 'undefined' || typeof stock?.tag === 'string')
       );
     });
 

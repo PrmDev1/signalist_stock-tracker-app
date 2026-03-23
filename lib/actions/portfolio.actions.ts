@@ -13,11 +13,17 @@ export interface CompanyProfile {
   ticker: string;
   companyName: string;
   primaryExchange: string;
+  officeSector?: string;
   sector: string;
   portfolioCategory?: 'Growth' | 'Dividend' | 'Balanced' | 'Core' | 'Underperformer' | string;
   filerSize: string;
   isSmallerReporting: boolean;
   isEmergingGrowth: boolean;
+  metrics?: {
+    price5YearCAGR?: number;
+    divConsistencyScore?: number;
+    div5YearCAGR?: number;
+  };
   latestPrice?: number;
   yesterdayPrice?: number;
 }

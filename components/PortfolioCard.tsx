@@ -1,27 +1,58 @@
+'use client';
+
 import Link from 'next/link';
 import { AlertCircle, ArrowUpRight } from 'lucide-react';
 import DeletePortfolioButton from '@/components/portfolio/DeletePortfolioButton';
+import EditPortfolioModal from './portfolio/EditPortfolioModal';
 import { formatPercentWithoutRounding } from '@/lib/formatters';
 
 export interface PortfolioCardProps {
   id: string;
   name: string;
   tickers: string[];
+  allocations?: Record<string, { weight: number; allocatedAmount: number }>;
+  initialCapital?: number;
+  monthlyDca?: number;
+  targetYears?: number;
+  lookbackYears?: number;
+  requireDiversification?: boolean;
+  modelName?: 'mvo' | 'semi';
+  tickerTags?: Record<string, string>;
+  mvoId?: string;
   riskLevel: 'low' | 'medium' | 'high';
   volatility: number;
   expectedReturn: number;
   updatedAt: string;
 }
 
+interface PortfolioCardComponentProps extends PortfolioCardProps {
+  onEditSave: (portfolio: PortfolioCardProps & { updatedAt: string }) => void;
+}
+
+type EditedPortfolioPayload = PortfolioCardProps & {
+  editedAssets: import('@/components/portfolio/EditableAssetRow').EditablePortfolioAsset[];
+  totalInvestment: number;
+};
+
 export default function PortfolioCard({
   id,
   name,
   tickers,
+  allocations,
+  initialCapital,
+  monthlyDca,
+  targetYears,
+  lookbackYears,
+  requireDiversification,
+  modelName,
+  tickerTags,
+  mvoId,
   riskLevel,
   volatility,
   expectedReturn,
   updatedAt,
-}: PortfolioCardProps) {
+  onEditSave,
+}: PortfolioCardComponentProps) {
   const normalizedRiskLevel = riskLevel.toLowerCase();
   const riskLabel = `${normalizedRiskLevel.charAt(0).toUpperCase()}${normalizedRiskLevel.slice(1)}`;
   const assets = tickers.length;
@@ -36,6 +67,24 @@ export default function PortfolioCard({
         : 'text-teal-400';
 
   const formattedDate = new Date(updatedAt).toLocaleDateString('th-TH');
+  const portfolio = {
+    id,
+    name,
+    tickers,
+    allocations,
+    initialCapital,
+    monthlyDca,
+    targetYears,
+    lookbackYears,
+    requireDiversification,
+    modelName,
+    tickerTags,
+    mvoId,
+    riskLevel,
+    volatility,
+    expectedReturn,
+    updatedAt,
+  };
 
   return (
     <article className="group relative block min-h-[280px] rounded-2xl border border-gray-700 bg-gradient-to-r from-gray-800 to-[#1c1c1c] px-5 py-5 shadow-lg transition-all duration-200 hover:border-gray-600 hover:shadow-[0_0_32px_rgba(88,98,255,0.10)]">
@@ -51,8 +100,19 @@ export default function PortfolioCard({
           <p className="mt-1 text-lg text-gray-300 leading-none">{assets} assets</p>
         </div>
 
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-500">
-          <ArrowUpRight className="h-6 w-6 text-white" />
+        <div className="relative z-20 flex items-center gap-2">
+          <EditPortfolioModal
+            portfolio={portfolio}
+            onSave={(updatedPortfolio: EditedPortfolioPayload) => {
+              onEditSave({
+                ...portfolio,
+                ...updatedPortfolio,
+              });
+            }}
+          />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-500">
+            <ArrowUpRight className="h-6 w-6 text-white" />
+          </div>
         </div>
       </div>
 

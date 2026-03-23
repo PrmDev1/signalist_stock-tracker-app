@@ -1,17 +1,56 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Trash2, Loader, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Trash2, Loader, AlertCircle, Columns3, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getPortfolioFilters, getPortfolioTickers, CompanyFilter, CompanyProfile } from '@/lib/actions/portfolio.actions';
 import SelectAssetHeader from './SelectAssetHeader';
-import StockListItem from './StockListItem';
+import StockListItem, { type StockColumnKey, type StockColumnVisibility } from './StockListItem';
 import FilterPanelModal from './FilterPanelModal';
 import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   type FilteredStock,
   getFilteredStocksFromSession,
   setFilteredStocksInSession,
 } from '@/lib/portfolio-filtered-stocks';
+
+const STOCK_SELECTOR_COLUMNS_STORAGE_KEY = 'stock-selector-visible-columns-v1';
+
+const DEFAULT_VISIBLE_COLUMNS: StockColumnVisibility = {
+  ticker: true,
+  companyName: true,
+  primaryExchange: true,
+  sector: true,
+  filerSize: true,
+  price5YearGrowth: true,
+  divScore: true,
+  div5YearGrowth: true,
+  latestPrice: true,
+  yesterdayPrice: true,
+  change: true,
+  select: true,
+};
+
+const coerceVisibleColumns = (value: unknown): StockColumnVisibility => {
+  if (!value || typeof value !== 'object') return DEFAULT_VISIBLE_COLUMNS;
+
+  const parsed = value as Partial<Record<StockColumnKey, unknown>>;
+  return {
+    ticker: parsed.ticker !== false,
+    companyName: parsed.companyName !== false,
+    primaryExchange: parsed.primaryExchange !== false,
+    sector: parsed.sector !== false,
+    filerSize: parsed.filerSize !== false,
+    price5YearGrowth: parsed.price5YearGrowth !== false,
+    divScore: parsed.divScore !== false,
+    div5YearGrowth: parsed.div5YearGrowth !== false,
+    latestPrice: parsed.latestPrice !== false,
+    yesterdayPrice: parsed.yesterdayPrice !== false,
+    change: parsed.change !== false,
+    // Always keep select column visible to preserve row selection behavior.
+    select: true,
+  };
+};
 
 export default function StockSelectorContent() {
   const router = useRouter();
@@ -34,12 +73,143 @@ export default function StockSelectorContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize] = useState(50);
   const [selectedStockMap, setSelectedStockMap] = useState<Record<string, FilteredStock>>({});
+  type SortKey = Exclude<StockColumnKey, 'select'>;
+  type SortDirection = 'asc' | 'desc';
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+  const [columnsHydrated, setColumnsHydrated] = useState(false);
+
+  const [visibleColumns, setVisibleColumns] = useState<StockColumnVisibility>(DEFAULT_VISIBLE_COLUMNS);
+
+  const columnDefs = useMemo<Array<{ key: StockColumnKey; label: string; width: string; canHide: boolean }>>(
+    () => [
+      { key: 'ticker', label: 'หุ้น', width: '180px', canHide: true },
+      { key: 'companyName', label: 'ชื่อบริษัท', width: 'minmax(220px,1.2fr)', canHide: true },
+      { key: 'primaryExchange', label: 'ตลาด', width: '90px', canHide: true },
+      { key: 'sector', label: 'หมวดหุ้น', width: 'minmax(220px,1.4fr)', canHide: true },
+      { key: 'filerSize', label: 'ขนาดบริษัท', width: '130px', canHide: true },
+      { key: 'price5YearGrowth', label: 'เติบโต 5 ปี', width: '100px', canHide: true },
+      { key: 'divScore', label: 'คะแนนปันผล', width: '100px', canHide: true },
+      { key: 'div5YearGrowth', label: 'ปันผล 5 ปี', width: '100px', canHide: true },
+      { key: 'latestPrice', label: 'ราคาล่าสุด', width: '110px', canHide: true },
+      { key: 'yesterdayPrice', label: 'ราคาวานนี้', width: '110px', canHide: true },
+      { key: 'change', label: 'เปลี่ยนแปลง', width: '100px', canHide: true },
+      { key: 'select', label: 'เลือก', width: '46px', canHide: false },
+    ],
+    []
+  );
+
+  const activeColumnDefs = useMemo(
+    () => columnDefs.filter((col) => visibleColumns[col.key]),
+    [columnDefs, visibleColumns]
+  );
+
+  const sortedStocks = useMemo(() => {
+    if (!sortConfig) return stocks;
+
+    const getSortValue = (stock: CompanyProfile, key: SortKey): string | number => {
+      switch (key) {
+        case 'ticker':
+          return stock.ticker || '';
+        case 'companyName':
+          return stock.companyName || '';
+        case 'primaryExchange':
+          return stock.primaryExchange || '';
+        case 'sector':
+          return stock.sector || '';
+        case 'filerSize':
+          return stock.filerSize || '';
+        case 'price5YearGrowth':
+          return Number.isFinite(stock.metrics?.price5YearCAGR) ? Number(stock.metrics?.price5YearCAGR) : Number.NEGATIVE_INFINITY;
+        case 'divScore':
+          return Number.isFinite(stock.metrics?.divConsistencyScore) ? Number(stock.metrics?.divConsistencyScore) : Number.NEGATIVE_INFINITY;
+        case 'div5YearGrowth':
+          return Number.isFinite(stock.metrics?.div5YearCAGR) ? Number(stock.metrics?.div5YearCAGR) : Number.NEGATIVE_INFINITY;
+        case 'latestPrice':
+          return Number.isFinite(stock.latestPrice) ? Number(stock.latestPrice) : Number.NEGATIVE_INFINITY;
+        case 'yesterdayPrice':
+          return Number.isFinite(stock.yesterdayPrice) ? Number(stock.yesterdayPrice) : Number.NEGATIVE_INFINITY;
+        case 'change':
+          return Number.isFinite(stock.latestPrice) && Number.isFinite(stock.yesterdayPrice) && Number(stock.yesterdayPrice) > 0
+            ? ((Number(stock.latestPrice) - Number(stock.yesterdayPrice)) / Number(stock.yesterdayPrice)) * 100
+            : Number.NEGATIVE_INFINITY;
+        default:
+          return '';
+      }
+    };
+
+    return [...stocks].sort((a, b) => {
+      const av = getSortValue(a, sortConfig.key);
+      const bv = getSortValue(b, sortConfig.key);
+
+      if (typeof av === 'string' && typeof bv === 'string') {
+        const result = av.localeCompare(bv);
+        return sortConfig.direction === 'asc' ? result : -result;
+      }
+
+      const result = Number(av) - Number(bv);
+      return sortConfig.direction === 'asc' ? result : -result;
+    });
+  }, [stocks, sortConfig]);
+
+  const columnTemplate = useMemo(
+    () => activeColumnDefs.map((col) => col.width).join(' '),
+    [activeColumnDefs]
+  );
+
+  const handleToggleColumn = (columnKey: StockColumnKey) => {
+    if (columnKey === 'select') return;
+
+    const visibleCount = columnDefs.filter((col) => col.canHide && visibleColumns[col.key]).length;
+    if (visibleColumns[columnKey] && visibleCount <= 1) {
+      return;
+    }
+
+    setVisibleColumns((prev) => ({
+      ...prev,
+      [columnKey]: !prev[columnKey],
+    }));
+  };
+
+  const handleSort = (key: SortKey, direction: SortDirection) => {
+    setSortConfig({ key, direction });
+  };
+
+  const clearSort = () => {
+    setSortConfig(null);
+  };
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STOCK_SELECTOR_COLUMNS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        setVisibleColumns(coerceVisibleColumns(parsed));
+      }
+    } catch (error) {
+      console.error('Failed to read saved columns:', error);
+    } finally {
+      setColumnsHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!columnsHydrated) return;
+
+    try {
+      window.localStorage.setItem(STOCK_SELECTOR_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch (error) {
+      console.error('Failed to save columns:', error);
+    }
+  }, [visibleColumns, columnsHydrated]);
 
   const toFilteredStock = (stock: CompanyProfile): FilteredStock => ({
     symbol: stock.ticker.trim().toUpperCase(),
     name: stock.companyName,
     sector: stock.sector,
     marketCap: 0,
+    tag: typeof stock.portfolioCategory === 'string' && stock.portfolioCategory.trim().length > 0
+      ? stock.portfolioCategory.trim().toLowerCase()
+      : undefined,
     latestPrice: Number.isFinite(stock.latestPrice) ? Number(stock.latestPrice) : undefined,
     dayChangePercent:
       Number.isFinite(stock.latestPrice) && Number.isFinite(stock.yesterdayPrice) && Number(stock.yesterdayPrice) > 0
@@ -200,20 +370,50 @@ export default function StockSelectorContent() {
           <h2 className="text-base sm:text-lg font-semibold text-white">
             US stocks
           </h2>
-          {selectedStocks.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="flex items-center gap-2 text-red-500 hover:text-red-400 text-xs sm:text-sm font-medium transition-colors"
-              title="Clear all selections"
-            >
-              <span>CLEAR ALL</span>
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-xs sm:text-sm text-gray-200 hover:bg-gray-700/70 transition-colors"
+                  title="เลือกคอลัมน์ที่ต้องการแสดง"
+                >
+                  <Columns3 className="w-4 h-4" />
+                  คอลัมน์
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-gray-900 border-gray-700 text-gray-100">
+                <DropdownMenuLabel>เลือกคอลัมน์ที่ต้องการแสดง</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                {columnDefs.map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.key}
+                    checked={visibleColumns[column.key]}
+                    disabled={!column.canHide}
+                    onCheckedChange={() => handleToggleColumn(column.key)}
+                    className="capitalize"
+                  >
+                    {column.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {selectedStocks.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="flex items-center gap-2 text-red-500 hover:text-red-400 text-xs sm:text-sm font-medium transition-colors"
+                title="Clear all selections"
+              >
+                <span>CLEAR ALL</span>
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stock List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-auto">
           {loading && (
             <div className="flex items-center justify-center h-32">
               <Loader className="w-8 h-8 text-blue-500 animate-spin" />
@@ -244,16 +444,69 @@ export default function StockSelectorContent() {
           )}
 
           {!loading && stocks.length > 0 && (
-            <>
-              {stocks.map((stock) => (
+            <div>
+              <div
+                className="sticky top-0 z-20 grid gap-3 border-b border-gray-700 bg-gray-900/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-200 backdrop-blur"
+                style={{ gridTemplateColumns: columnTemplate }}
+              >
+                {activeColumnDefs.map((column) => (
+                  column.key === 'select' ? (
+                    <span key={column.key} className="text-center">
+                      {column.label}
+                    </span>
+                  ) : (
+                    <DropdownMenu key={column.key}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-left hover:text-white transition-colors"
+                          title={`จัดเรียง ${column.label}`}
+                        >
+                          {sortConfig?.key === column.key ? (
+                            sortConfig.direction === 'asc' ? (
+                              <ArrowUp className="w-3 h-3 text-blue-300" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3 text-blue-300" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 text-blue-300/70" />
+                          )}
+                          <span>{column.label}</span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-56 bg-gray-900 border-gray-700 text-gray-100">
+                        <DropdownMenuLabel>{column.label}</DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-gray-700" />
+                        <DropdownMenuItem onClick={() => handleSort(column.key as SortKey, 'asc')}>
+                          <ArrowUp className="w-4 h-4" />
+                          เรียงลำดับจากน้อยไปมาก
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSort(column.key as SortKey, 'desc')}>
+                          <ArrowDown className="w-4 h-4" />
+                          เรียงลำดับจากมากไปน้อย
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-gray-700" />
+                        <DropdownMenuItem onClick={clearSort}>
+                          <Trash2 className="w-4 h-4" />
+                          ล้างการเรียง
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )
+                ))}
+              </div>
+
+              {sortedStocks.map((stock) => (
                 <StockListItem
                   key={stock.ticker}
                   stock={stock}
                   isSelected={selectedStocks.includes(stock.ticker.trim().toUpperCase())}
                   onSelect={handleSelectStock}
+                  visibleColumns={visibleColumns}
+                  columnTemplate={columnTemplate}
                 />
               ))}
-            </>
+            </div>
           )}
         </div>
 

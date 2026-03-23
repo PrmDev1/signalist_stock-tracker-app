@@ -137,13 +137,12 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setRiskRewardProfile(null);
     setStatusMessage(`กำลังเตรียมหุ้น ${selectedStocks.length} ตัวสำหรับการจัดพอร์ต`);
 
-    const tickers = selectedStocks.map((stock) => stock.symbol.toUpperCase());
     const selectedRiskLevel = riskTolerance;
     optimizedRiskLevelRef.current = selectedRiskLevel;
 
     try {
       const response = await startPortfolioOptimization(
-        tickers,
+        selectedStocks,
         lookbackYears,
         selectedRiskLevel,
         requireDiversification,
@@ -277,9 +276,21 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         .map((ticker) => ticker.trim().toUpperCase())
         .filter(Boolean);
 
+      const tickerTags = selectedStocks.reduce<Record<string, string>>((acc, stock) => {
+        const symbol = stock.symbol.trim().toUpperCase();
+        const tag = typeof stock.tag === 'string' ? stock.tag.trim().toLowerCase() : '';
+
+        if (symbol && tag && tickers.includes(symbol)) {
+          acc[symbol] = tag;
+        }
+
+        return acc;
+      }, {});
+
       const response = await savePortfolioToDatabase(
         portfolioName,
         tickers,
+        tickerTags,
         result.allocations,
         result.expectedReturn,
         result.volatility,
