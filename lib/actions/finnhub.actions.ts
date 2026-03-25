@@ -283,6 +283,34 @@ export const getStocksDetails = cache(async (symbol: string) => {
   }
 });
 
+export const getStockQuotePrice = async (symbol: string): Promise<number | null> => {
+  const cleanSymbol = symbol.trim().toUpperCase();
+
+  if (!cleanSymbol) return null;
+
+  try {
+    const token = process.env.FINNHUB_API_KEY ?? NEXT_PUBLIC_FINNHUB_API_KEY;
+    if (!token) return null;
+
+    const quote = await fetchJSON<{ c?: number }>(
+      `${FINNHUB_BASE_URL}/quote?symbol=${cleanSymbol}&token=${token}`
+    );
+
+    const price = Number(quote?.c);
+    if (!Number.isFinite(price) || price <= 0) return null;
+
+    return price;
+  } catch (error) {
+    if (error instanceof FinnhubApiError && error.status === 429) {
+      console.warn(`Finnhub quote limit reached for ${cleanSymbol}`);
+      return null;
+    }
+
+    console.error(`Error fetching quote for ${cleanSymbol}:`, error);
+    return null;
+  }
+};
+
 
 
 

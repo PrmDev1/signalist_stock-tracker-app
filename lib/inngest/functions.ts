@@ -5,6 +5,7 @@ import {getAllUsersForNewsEmail} from "@/lib/actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getFormattedTodayDate } from "@/lib/utils";
+import { runPriceAlertCheck } from '@/lib/services/alerts/alert-checker';
 
 export const sendSignUpEmail = inngest.createFunction(
     { id: 'sign-up-email' },
@@ -118,3 +119,16 @@ export const sendDailyNewsSummary = inngest.createFunction(
         return { success: true, message: 'Daily news summary emails sent successfully' }
     }
 )
+
+export const monitorPriceAlerts = inngest.createFunction(
+    { id: 'price-alert-monitor' },
+    [{ event: 'app/alerts.check' }, { cron: '*/1 * * * *' }],
+    async ({ step }) => {
+        const result = await step.run('check-price-alerts', async () => runPriceAlertCheck());
+
+        return {
+            success: true,
+            ...result,
+        };
+    }
+);

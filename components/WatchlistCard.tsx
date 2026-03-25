@@ -1,9 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { cn, getChangeColorClass } from '@/lib/utils';
 import WatchlistButton from './WatchlistButton';
-import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import SetPriceAlertModal from '@/components/modals/SetPriceAlertModal';
+import type { PriceAlertDto } from '@/lib/alerts/types';
 
 interface WatchlistCardProps {
   symbol: string;
@@ -19,6 +23,7 @@ interface WatchlistCardProps {
 export default function WatchlistCard({
   symbol,
   company,
+  price,
   priceFormatted,
   changePercent,
   changeFormatted,
@@ -27,6 +32,8 @@ export default function WatchlistCard({
 }: WatchlistCardProps) {
   const router = useRouter();
   const [logoError, setLogoError] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alert, setAlert] = useState<PriceAlertDto | null>(null);
 
   const initials = company.charAt(0).toUpperCase();
 
@@ -47,10 +54,43 @@ export default function WatchlistCard({
 
   const iconColor = useMemo(() => getIconColor(symbol), [symbol]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadAlert = async () => {
+      try {
+        const response = await fetch(`/api/alerts?ticker=${encodeURIComponent(symbol)}`, {
+          method: 'GET',
+          cache: 'no-store',
+        });
+
+        if (!response.ok || !active) return;
+
+        const payload = (await response.json()) as { alert: PriceAlertDto | null };
+        setAlert(payload.alert);
+      } catch {
+        // Keep cards resilient even when alert fetch fails.
+      }
+    };
+
+    void loadAlert();
+
+    return () => {
+      active = false;
+    };
+  }, [symbol]);
+
+  const openAlertModal = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsModalOpen(true);
+  };
+
   return (
-    <div
-      onClick={() => router.push(`/stocks/${encodeURIComponent(symbol)}`)}
-      className="
+    <>
+      <div
+        onClick={() => router.push(`/stocks/${encodeURIComponent(symbol)}`)}
+        className="
         group relative cursor-pointer rounded-2xl p-5
         bg-gradient-to-br from-[#1b1f26] to-[#232833]
         border border-white/10
@@ -81,12 +121,30 @@ export default function WatchlistCard({
         )}
 
         {/* Star */}
-        <WatchlistButton
-          symbol={symbol}
-          company={company}
-          isInWatchlist={isInWatchlist}
-          type="icon"
-        />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={`Set price alert for ${symbol}`}
+            onClick={openAlertModal}
+            className={cn(
+              'h-9 w-9 flex items-center justify-center rounded-full border border-gray-600 bg-gray-700/60 transition-colors',
+              alert?.isActive ? 'border-yellow-400/60 bg-yellow-500/10' : 'hover:border-gray-500'
+            )}
+          >
+            <Image
+              src={alert?.isActive ? '/assets/icons/bell-filled.svg' : '/assets/icons/bell-outline.svg'}
+              alt="Alert"
+              width={16}
+              height={16}
+            />
+          </button>
+          <WatchlistButton
+            symbol={symbol}
+            company={company}
+            isInWatchlist={isInWatchlist}
+            type="icon"
+          />
+        </div>
       </div>
 
       {/* Company */}
@@ -108,6 +166,19 @@ export default function WatchlistCard({
       >
         {changeFormatted}
       </p>
-    </div>
+      </div>
+
+      <SetPriceAlertModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        stock={{
+          ticker: symbol,
+          company,
+          currentPrice: price,
+        }}
+        initialAlert={alert}
+        onAlertChange={(_, nextAlert) => setAlert(nextAlert)}
+      />
+    </>
   );
 }
