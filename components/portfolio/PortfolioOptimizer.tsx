@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { startPortfolioOptimization, getPortfolioOptimizationStatus, savePortfolioToDatabase } from '@/lib/actions/cloudflare.actions';
 import {
@@ -16,11 +16,23 @@ import {
 import ParameterPanel from './optimizer/ParameterPanel';
 import PreviewPanel from './optimizer/PreviewPanel';
 import ResultsPanel from './optimizer/ResultsPanel';
+import GrowthConfig from './optimizer/GrowthConfig';
+import DividendConfig from './optimizer/DividendConfig';
+import BalancedConfig from './optimizer/BalancedConfig';
+import CustomConfig from './optimizer/CustomConfig';
 import type {
   InvestmentHorizon,
   PortfolioResult,
   RiskTolerance,
 } from '@/components/portfolio/optimizer/types';
+import type {
+  PortfolioConfigurationState,
+  PortfolioPreset,
+} from '@/components/portfolio/optimizer/preset-config.types';
+import {
+  getDefaultPresetFormValues,
+  toConfigurationState,
+} from '@/components/portfolio/optimizer/preset-config.types';
 import type {
   BacktestAndMetrics,
   EducationalInsights,
@@ -33,6 +45,19 @@ interface PortfolioOptimizerProps {
 
 export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptimizerProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetQuery = searchParams.get('preset');
+  const resolvedPresetFromQuery: PortfolioPreset =
+    presetQuery === 'growth' ||
+    presetQuery === 'dividend' ||
+    presetQuery === 'balanced' ||
+    presetQuery === 'custom'
+      ? presetQuery
+      : 'custom';
+
+  // Helper for navigation back to select-stocks with preset
+  const selectStocksUrl = `/portfolio/select-stocks?preset=${resolvedPresetFromQuery}`;
+
   const [selectedStocks, setSelectedStocks] = useState<FilteredStock[]>([]);
   const [isSelectionReady, setIsSelectionReady] = useState(false);
   const [investmentAmount, setInvestmentAmount] = useState<number>(10000);
@@ -55,17 +80,31 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   const [backtestAndMetrics, setBacktestAndMetrics] = useState<BacktestAndMetrics | null>(null);
   const [educationalInsights, setEducationalInsights] = useState<EducationalInsights | null>(null);
   const [riskRewardProfile, setRiskRewardProfile] = useState<RiskRewardProfile | null>(null);
+  const [presetConfig, setPresetConfig] = useState<PortfolioConfigurationState>(() =>
+    toConfigurationState(getDefaultPresetFormValues(resolvedPresetFromQuery))
+  );
   const hasAutoStartedRef = useRef(false);
   const [isResultParamsReady, setIsResultParamsReady] = useState(mode === 'settings');
 
   const canCreatePortfolio = selectedStocks.length >= 2;
+  const activePreset = presetConfig.preset;
+  const availableTagAllocations = useMemo(
+    () => ({
+      growth: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'growth'),
+      dividend: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'dividend'),
+      balanced: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'balanced'),
+    }),
+    [selectedStocks]
+  );
 
   const lookbackYears = useMemo(() => {
-    // lookbackYears is used only for portfolio optimization historical window.
+    if (Number.isFinite(presetConfig.lookbackYears)) {
+      return Number(presetConfig.lookbackYears);
+    }
     if (investmentHorizon === 'short') return 3;
     if (investmentHorizon === 'long') return 10;
     return 5;
-  }, [investmentHorizon]);
+  }, [investmentHorizon, presetConfig.lookbackYears]);
 
   const canRunOptimization =
     canCreatePortfolio &&
@@ -78,16 +117,16 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     targetYears <= 20;
 
   useEffect(() => {
-    const stocksFromFilter = getFilteredStocksFromSession();
+    const stocksFromFilter = getFilteredStocksFromSession(resolvedPresetFromQuery);
 
     if (stocksFromFilter.length === 0) {
-      router.replace('/portfolio/select-stocks');
+      router.replace(selectStocksUrl);
       return;
     }
 
     setSelectedStocks(stocksFromFilter);
     setIsSelectionReady(true);
-  }, [router]);
+  }, [router, selectStocksUrl]);
 
   useEffect(() => {
     if (mode !== 'results' || !isSelectionReady) return;
@@ -106,12 +145,13 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setModelName(params.modelName);
     setBrokerMinOrder(params.brokerMinOrder);
     setRequireDiversification(params.requireDiversification);
+    setPresetConfig(params.presetConfig);
     setIsResultParamsReady(true);
   }, [isSelectionReady, mode, router]);
 
   const handleOptimize = async () => {
     if (selectedStocks.length === 0) {
-      router.replace('/portfolio/select-stocks');
+      router.replace(selectStocksUrl);
       return;
     }
 
@@ -146,7 +186,14 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         lookbackYears,
         selectedRiskLevel,
         requireDiversification,
-        modelName
+        modelName,
+        undefined,
+        {
+          preset: presetConfig.preset,
+          customMethod: presetConfig.customMethod,
+          span: presetConfig.span,
+          targetAllocations: presetConfig.targetAllocations,
+        }
       );
 
       if (!response.success) {
@@ -194,6 +241,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       modelName,
       brokerMinOrder,
       requireDiversification,
+      presetConfig,
     });
 
     router.push('/portfolio/optimizer/start');
@@ -251,6 +299,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setRiskTolerance('medium');
     setRequireDiversification(true);
     setModelName('mvo');
+    setPresetConfig(toConfigurationState(getDefaultPresetFormValues(resolvedPresetFromQuery)));
     setErrorMsg(null);
     setStatus('IDLE');
     setStatusMessage(null);
@@ -329,10 +378,10 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   const handleRemoveStock = (symbol: string) => {
     const nextStocks = selectedStocks.filter((stock) => stock.symbol !== symbol);
     setSelectedStocks(nextStocks);
-    setFilteredStocksInSession(nextStocks);
+    setFilteredStocksInSession(nextStocks, resolvedPresetFromQuery);
 
     if (nextStocks.length === 0) {
-      router.replace('/portfolio/select-stocks');
+      router.replace(selectStocksUrl);
       return;
     }
 
@@ -356,7 +405,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
           <button
             type="button"
-            onClick={() => router.push(mode === 'results' ? '/portfolio/optimizer' : '/portfolio/select-stocks')}
+            onClick={() => router.push(mode === 'results' ? '/portfolio/optimizer' : selectStocksUrl)}
             className="mb-4 inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-600"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -401,13 +450,24 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
               setBrokerMinOrder={setBrokerMinOrder}
               requireDiversification={requireDiversification}
               setRequireDiversification={setRequireDiversification}
-              lookbackYears={lookbackYears}
+              activePreset={activePreset}
+              presetConfigPanel={
+                activePreset === 'growth' ? (
+                  <GrowthConfig value={presetConfig} onChange={setPresetConfig} />
+                ) : activePreset === 'dividend' ? (
+                  <DividendConfig value={presetConfig} onChange={setPresetConfig} />
+                ) : activePreset === 'balanced' ? (
+                  <BalancedConfig value={presetConfig} onChange={setPresetConfig} availableTagAllocations={availableTagAllocations} />
+                ) : (
+                  <CustomConfig value={presetConfig} onChange={setPresetConfig} />
+                )
+              }
               status={status}
               statusMessage={statusMessage}
               canRunOptimization={canRunOptimization}
               onOptimize={handleGoToResultsPage}
               onReset={handleResetParameters}
-              onBack={() => router.push('/portfolio/select-stocks')}
+              onBack={() => router.push(selectStocksUrl)}
             />
 
             <PreviewPanel

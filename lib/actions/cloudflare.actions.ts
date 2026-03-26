@@ -51,6 +51,17 @@ interface PortfolioRequest {
   riskLevel?: string;
   requireDiversification?: boolean;
   modelName?: 'mvo' | 'semi'; // MVO or Semi-Variance
+  preset?: 'growth' | 'dividend' | 'balanced' | 'custom';
+  customMethod?: 'auto' | 'ema' | 'mhr';
+  span?: number;
+  targetAllocations?: Record<string, number>;
+}
+
+interface OptimizeAdvancedOptions {
+  preset: 'growth' | 'dividend' | 'balanced' | 'custom';
+  customMethod: 'auto' | 'ema' | 'mhr';
+  span: number;
+  targetAllocations: Record<string, number>;
 }
 
 interface PortfolioOptimizeResponse {
@@ -130,7 +141,8 @@ export async function startPortfolioOptimization(
   riskLevel: string = 'medium',
   requireDiversification: boolean = true,
   modelName: 'mvo' | 'semi' = 'mvo',
-  shareOverrides?: Record<string, { shares: number; price?: number; tag?: string }>
+  shareOverrides?: Record<string, { shares: number; price?: number; tag?: string }>,
+  advancedOptions?: OptimizeAdvancedOptions
 ): Promise<{ success: boolean; reqId?: string; error?: string }> {
   try {
     if (!CLOUDFLARE_BASE_URL || !CLOUDFLARE_API_KEY) {
@@ -175,6 +187,12 @@ export async function startPortfolioOptimization(
       riskLevel,
       requireDiversification,
       modelName,
+      preset: advancedOptions?.preset || 'custom',
+      customMethod: advancedOptions?.customMethod || 'auto',
+      span: Number.isFinite(advancedOptions?.span)
+        ? Math.max(180, Number(advancedOptions?.span))
+        : 500,
+      targetAllocations: advancedOptions?.targetAllocations || {},
     };
 
     const res = await fetch(

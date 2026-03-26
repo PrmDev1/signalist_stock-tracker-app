@@ -6,7 +6,7 @@ import { getPortfolioFilters, getPortfolioTickers, CompanyFilter, CompanyProfile
 import SelectAssetHeader from './SelectAssetHeader';
 import StockListItem, { type StockColumnKey, type StockColumnVisibility } from './StockListItem';
 import FilterPanelModal from './FilterPanelModal';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   type FilteredStock,
@@ -54,6 +54,13 @@ const coerceVisibleColumns = (value: unknown): StockColumnVisibility => {
 
 export default function StockSelectorContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetQuery = searchParams.get('preset');
+  const activePreset =
+    presetQuery === 'growth' || presetQuery === 'dividend' || presetQuery === 'balanced' || presetQuery === 'custom'
+      ? presetQuery
+      : 'custom';
+  const filterTag = activePreset === 'growth' ? 'growth' : activePreset === 'dividend' ? 'dividend' : 'all';
   const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,16 +73,17 @@ export default function StockSelectorContent() {
     isSmallerReporting?: boolean;
     isEmergingGrowth?: boolean;
   }>({});
-  const [stocks, setStocks] = useState<CompanyProfile[]>([]);
+  const [allStocks, setAllStocks] = useState<CompanyProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
+  const [fetchCapped, setFetchCapped] = useState<boolean>(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const [pageSize] = useState(50);
+  const UI_PAGE_SIZE = 50;
   const [selectedStockMap, setSelectedStockMap] = useState<Record<string, FilteredStock>>({});
   type SortKey = Exclude<StockColumnKey, 'select'>;
   type SortDirection = 'asc' | 'desc';
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'ticker', direction: 'asc' });
   const [columnsHydrated, setColumnsHydrated] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<StockColumnVisibility>(DEFAULT_VISIBLE_COLUMNS);
@@ -104,7 +112,7 @@ export default function StockSelectorContent() {
   );
 
   const sortedStocks = useMemo(() => {
-    if (!sortConfig) return stocks;
+    if (!sortConfig) return [...allStocks].sort((a, b) => (a.ticker || '').localeCompare(b.ticker || ''));
 
     const getSortValue = (stock: CompanyProfile, key: SortKey): string | number => {
       switch (key) {
@@ -137,7 +145,7 @@ export default function StockSelectorContent() {
       }
     };
 
-    return [...stocks].sort((a, b) => {
+    return [...allStocks].sort((a, b) => {
       const av = getSortValue(a, sortConfig.key);
       const bv = getSortValue(b, sortConfig.key);
 
@@ -149,7 +157,15 @@ export default function StockSelectorContent() {
       const result = Number(av) - Number(bv);
       return sortConfig.direction === 'asc' ? result : -result;
     });
-  }, [stocks, sortConfig]);
+  }, [allStocks, sortConfig]);
+
+  const presetFilteredStocks = useMemo(() => {
+    if (filterTag === 'all') return sortedStocks;
+    return sortedStocks.filter((stock) => {
+      const tag = String(stock.portfolioCategory ?? '').trim().toLowerCase();
+      return tag === filterTag;
+    });
+  }, [filterTag, sortedStocks]);
 
   const columnTemplate = useMemo(
     () => activeColumnDefs.map((col) => col.width).join(' '),
@@ -239,7 +255,7 @@ export default function StockSelectorContent() {
   useEffect(() => {
     fetchFilters();
 
-    const previouslySelected = getFilteredStocksFromSession();
+    const previouslySelected = getFilteredStocksFromSession(activePreset);
     if (previouslySelected.length > 0) {
       const symbols = previouslySelected.map((stock) => stock.symbol.trim().toUpperCase());
       const stockMap = previouslySelected.reduce<Record<string, FilteredStock>>((acc, stock) => {
@@ -256,30 +272,62 @@ export default function StockSelectorContent() {
     }
   }, []);
 
-  // Fetch stocks when search, filters, or page changes
+  // Fetch all stocks (all backend pages) when search or filters change
   useEffect(() => {
+    let cancelled = false;
+
     const fetchStocks = async () => {
       setLoading(true);
       setError(null);
+      setLoadingProgress(0);
+      setFetchCapped(false);
 
-      const response = await getPortfolioTickers(currentPage, pageSize, {
-        search: searchTerm || undefined,
-        officeSector: activeFilters.officeSector,
-        sector: activeFilters.sector,
-        exchange: activeFilters.exchange,
-        filerSize: activeFilters.filerSize,
-        isSmallerReporting: activeFilters.isSmallerReporting,
-        isEmergingGrowth: activeFilters.isEmergingGrowth,
-      });
+      const mergedStocks: CompanyProfile[] = [];
+      let page = 1;
+      const API_PAGE_SIZE = 500;
+      const MAX_PAGES = 20; // safety cap (10,000 stocks)
 
-      if (response.success && response.tickers) {
-        setStocks(response.tickers);
-        setTotalCount(response.count || 0);
-      } else {
-        setError(response.error || 'Failed to fetch stocks');
-        setStocks([]);
+      while (true) {
+        const response = await getPortfolioTickers(page, API_PAGE_SIZE, {
+          search: searchTerm || undefined,
+          officeSector: activeFilters.officeSector,
+          sector: activeFilters.sector,
+          exchange: activeFilters.exchange,
+          filerSize: activeFilters.filerSize,
+          isSmallerReporting: activeFilters.isSmallerReporting,
+          isEmergingGrowth: activeFilters.isEmergingGrowth,
+        });
+
+        if (cancelled) return;
+
+        if (!response.success) {
+          setError(response.error || 'Failed to fetch stocks');
+          setAllStocks([]);
+          setLoading(false);
+          setLoadingProgress(0);
+          return;
+        }
+
+        const chunk = response.tickers ?? [];
+        mergedStocks.push(...chunk);
+        setLoadingProgress(mergedStocks.length);
+
+        if (chunk.length < API_PAGE_SIZE) {
+          break;
+        }
+        if (page >= MAX_PAGES) {
+          setFetchCapped(true);
+          break;
+        }
+
+        page += 1;
       }
+
+      if (cancelled) return;
+
+      setAllStocks(mergedStocks);
       setLoading(false);
+      setLoadingProgress(0);
     };
 
     // Debounce search
@@ -288,8 +336,11 @@ export default function StockSelectorContent() {
       fetchStocks();
     }, 300);
 
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, activeFilters, currentPage, pageSize]);
+    return () => {
+      cancelled = true;
+      clearTimeout(debounceTimer);
+    };
+  }, [searchTerm, activeFilters]);
 
   const handleSelectStock = (ticker: string) => {
     const normalizedTicker = ticker.trim().toUpperCase();
@@ -306,7 +357,7 @@ export default function StockSelectorContent() {
     }
 
     setSelectedStocks((prev) => [...prev, normalizedTicker]);
-    const foundStock = stocks.find((stock) => stock.ticker.trim().toUpperCase() === normalizedTicker);
+    const foundStock = allStocks.find((stock: CompanyProfile) => stock.ticker.trim().toUpperCase() === normalizedTicker);
     if (foundStock) {
       setSelectedStockMap((prev) => ({
         ...prev,
@@ -326,7 +377,7 @@ export default function StockSelectorContent() {
   const handleClearAll = () => {
     setSelectedStocks([]);
     setSelectedStockMap({});
-    setFilteredStocksInSession([]);
+    setFilteredStocksInSession([], activePreset);
     setSearchTerm('');
     setActiveFilters({});
     setCurrentPage(1);
@@ -342,16 +393,44 @@ export default function StockSelectorContent() {
         return;
       }
 
-      setFilteredStocksInSession(filteredStocks);
-      router.push('/portfolio/optimizer');
+      setFilteredStocksInSession(filteredStocks, activePreset);
+      router.push(`/portfolio/optimizer?preset=${activePreset}`);
     }
   };
 
   const handleClose = () => {
-    router.back();
+    router.push('/portfolio/presets');
   };
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+  // Pagination (frontend)
+  const totalPages = Math.max(1, Math.ceil(presetFilteredStocks.length / UI_PAGE_SIZE));
+  const paginatedStocks = useMemo(() => {
+    const start = (currentPage - 1) * UI_PAGE_SIZE;
+    const end = start + UI_PAGE_SIZE;
+    return presetFilteredStocks.slice(start, end);
+  }, [currentPage, presetFilteredStocks]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginationItems = useMemo<Array<number | 'ellipsis'>>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, 'ellipsis', totalPages];
+    }
+
+    if (currentPage >= totalPages - 2) {
+      return [1, 'ellipsis', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
+  }, [currentPage, totalPages]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">
@@ -412,11 +491,29 @@ export default function StockSelectorContent() {
           </div>
         </div>
 
+        <div className="px-4 py-2 sm:px-6 border-b border-gray-800 bg-gray-900/80">
+          <p className="text-xs text-gray-300">
+            Active preset filter:{' '}
+            <span className="font-semibold text-cyan-300 uppercase tracking-[0.1em]">
+              {filterTag === 'all' ? 'All tags' : filterTag}
+            </span>
+          </p>
+        </div>
+
         {/* Stock List */}
-        <div className="flex-1 overflow-auto">
+        <div className="tv-scrollbar flex-1 overflow-auto">
           {loading && (
-            <div className="flex items-center justify-center h-32">
+            <div className="flex flex-col items-center justify-center h-32 gap-2">
               <Loader className="w-8 h-8 text-blue-500 animate-spin" />
+              <span className="text-xs text-blue-200 mt-1">Loaded {loadingProgress}+ stocks...</span>
+            </div>
+          )}
+          {fetchCapped && !loading && (
+            <div className="flex items-center gap-3 m-4 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+              <p className="text-sm text-yellow-400">
+                Warning: Fetched stocks reached the safety cap ({loadingProgress}+). The API may be returning too many pages. Please check your filters or try again later.
+              </p>
             </div>
           )}
 
@@ -437,13 +534,13 @@ export default function StockSelectorContent() {
             </div>
           )}
 
-          {!loading && !error && stocks.length === 0 && (
+          {!loading && !error && presetFilteredStocks.length === 0 && (
             <div className="flex items-center justify-center h-32 text-gray-400">
-              <p className="text-sm">No stocks found. Try adjusting your filters.</p>
+              <p className="text-sm">No stocks found for this preset. Try adjusting your filters.</p>
             </div>
           )}
 
-          {!loading && stocks.length > 0 && (
+          {!loading && presetFilteredStocks.length > 0 && (
             <div>
               <div
                 className="sticky top-0 z-20 grid gap-3 border-b border-gray-700 bg-gray-900/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-200 backdrop-blur"
@@ -496,7 +593,7 @@ export default function StockSelectorContent() {
                 ))}
               </div>
 
-              {sortedStocks.map((stock) => (
+              {paginatedStocks.map((stock) => (
                 <StockListItem
                   key={stock.ticker}
                   stock={stock}
@@ -510,26 +607,77 @@ export default function StockSelectorContent() {
           )}
         </div>
 
-        {/* Pagination */}
-        {!loading && stocks.length > 0 && totalPages > 1 && (
-          <div className="border-t border-gray-800 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-gray-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            <span className="text-xs sm:text-sm text-gray-400">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-gray-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
+        {/* Sticky Pagination Bar */}
+        {!loading && totalPages > 1 && (
+          <div className="sticky bottom-[88px] z-20 border-t border-gray-800/90 bg-gray-900/95 px-4 py-3 backdrop-blur sm:bottom-[96px] sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-700 bg-gray-800/90 px-3 py-2">
+              <div className="text-xs text-gray-400 sm:text-sm">
+                Page <span className="font-semibold text-blue-300">{currentPage}</span> of {totalPages}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="h-8 rounded-md border border-gray-700 px-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  First
+                </button>
+
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="h-8 rounded-md border border-gray-700 px-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Prev
+                </button>
+
+                {paginationItems.map((item, index) => {
+                  if (item === 'ellipsis') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="px-1 text-xs text-gray-500">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCurrentPage(item)}
+                      className={`h-8 min-w-8 rounded-md border px-2 text-xs font-semibold transition-colors ${
+                        item === currentPage
+                          ? 'border-blue-400 bg-blue-500/20 text-blue-200 shadow-[0_0_0_1px_rgba(96,165,250,0.25)]'
+                          : 'border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="h-8 rounded-md border border-gray-700 px-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="h-8 rounded-md border border-gray-700 px-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

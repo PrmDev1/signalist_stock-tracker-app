@@ -1,3 +1,5 @@
+import type { PortfolioConfigurationState } from '@/components/portfolio/optimizer/preset-config.types';
+
 export interface PortfolioOptimizerParams {
   investmentAmount: number;
   monthlyDca: number;
@@ -7,6 +9,7 @@ export interface PortfolioOptimizerParams {
   modelName: 'mvo' | 'semi';
   brokerMinOrder: number;
   requireDiversification: boolean;
+  presetConfig: PortfolioConfigurationState;
 }
 
 const STORAGE_KEY = 'portfolioOptimizerParams';
@@ -37,7 +40,9 @@ export function getOptimizerParamsFromSession(): PortfolioOptimizerParams | null
       !parsed.investmentHorizon ||
       !parsed.modelName ||
       !Number.isFinite(parsed.brokerMinOrder) ||
-      typeof parsed.requireDiversification !== 'boolean'
+      typeof parsed.requireDiversification !== 'boolean' ||
+      !parsed.presetConfig ||
+      typeof parsed.presetConfig !== 'object'
     ) {
       return null;
     }
@@ -51,6 +56,7 @@ export function getOptimizerParamsFromSession(): PortfolioOptimizerParams | null
       modelName: parsed.modelName,
       brokerMinOrder: Number(parsed.brokerMinOrder),
       requireDiversification: parsed.requireDiversification,
+      presetConfig: parsed.presetConfig as PortfolioConfigurationState,
     };
   } catch {
     return null;

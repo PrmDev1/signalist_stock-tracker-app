@@ -25,7 +25,8 @@ export default function ParameterPanel({
   setBrokerMinOrder,
   requireDiversification,
   setRequireDiversification,
-  lookbackYears,
+  activePreset,
+  presetConfigPanel,
   status,
   statusMessage,
   canRunOptimization,
@@ -37,6 +38,9 @@ export default function ParameterPanel({
     <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
       <h2 className="text-lg font-semibold text-white sm:text-xl">พารามิเตอร์การจัดพอร์ต</h2>
       <p className="mt-1 text-sm text-gray-400">ตั้งค่าที่จำเป็นก่อนเริ่มให้ AI คำนวณพอร์ต</p>
+      <div className="mt-3 inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-cyan-200">
+        preset mode: {activePreset}
+      </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
@@ -116,26 +120,6 @@ export default function ParameterPanel({
         </div>
 
         <div>
-          <label className="mb-1 flex items-center text-sm font-medium text-gray-300">
-            ระยะเวลาข้อมูลย้อนหลัง
-          </label>
-          <Select
-            value={investmentHorizon}
-            onValueChange={(value) => setInvestmentHorizon(value as typeof investmentHorizon)}
-          >
-            <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-700 text-white">
-              <SelectValue placeholder="เลือกจำนวนปีย้อนหลัง" />
-            </SelectTrigger>
-            <SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
-              <SelectItem value="short">สั้น</SelectItem>
-              <SelectItem value="medium">กลาง</SelectItem>
-              <SelectItem value="long">ยาว</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-gray-500">ระบบจะนำข้อมูลย้อนหลัง {lookbackYears} ปีมาวิเคราะห์</p>
-        </div>
-
-        <div>
           <div className="mb-1 flex items-center text-sm font-medium text-gray-300">
             <span>โมเดลที่ใช้จัดพอร์ต</span>
             <InfoPopover title="โมเดลจัดพอร์ต" description="MVO เหมาะกับการบาลานซ์ผลตอบแทน/ความผันผวน ส่วน Semi เหมาะกับผู้ที่เน้นลดความเสี่ยงขาลง" />
@@ -182,6 +166,8 @@ export default function ParameterPanel({
           </label>
         </div>
       </div>
+
+      {presetConfigPanel}
 
       <div className="mt-6 flex flex-wrap gap-3">
         <button

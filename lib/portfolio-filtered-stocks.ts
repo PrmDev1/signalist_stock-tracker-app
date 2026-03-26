@@ -10,6 +10,11 @@ export interface FilteredStock {
 
 export const FILTERED_STOCKS_STORAGE_KEY = 'portfolioFilteredStocks';
 
+function getPresetStorageKey(preset?: string) {
+  if (!preset) return FILTERED_STOCKS_STORAGE_KEY;
+  return `${FILTERED_STOCKS_STORAGE_KEY}_${preset}`;
+}
+
 function normalizeFilteredStock(stock: FilteredStock): FilteredStock {
   return {
     symbol: stock.symbol.trim().toUpperCase(),
@@ -36,16 +41,16 @@ function dedupeFilteredStocks(stocks: FilteredStock[]): FilteredStock[] {
   return Array.from(map.values());
 }
 
-export function setFilteredStocksInSession(stocks: FilteredStock[]): void {
+export function setFilteredStocksInSession(stocks: FilteredStock[], preset?: string): void {
   if (typeof window === 'undefined') return;
   const uniqueStocks = dedupeFilteredStocks(stocks);
-  sessionStorage.setItem(FILTERED_STOCKS_STORAGE_KEY, JSON.stringify(uniqueStocks));
+  sessionStorage.setItem(getPresetStorageKey(preset), JSON.stringify(uniqueStocks));
 }
 
-export function getFilteredStocksFromSession(): FilteredStock[] {
+export function getFilteredStocksFromSession(preset?: string): FilteredStock[] {
   if (typeof window === 'undefined') return [];
 
-  const raw = sessionStorage.getItem(FILTERED_STOCKS_STORAGE_KEY);
+  const raw = sessionStorage.getItem(getPresetStorageKey(preset));
   if (!raw) return [];
 
   try {

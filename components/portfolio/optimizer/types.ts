@@ -1,9 +1,14 @@
 import type { FilteredStock } from '@/lib/portfolio-filtered-stocks';
+import type { ReactNode } from 'react';
 import type {
   BacktestAndMetrics,
   EducationalInsights,
   RiskRewardProfile,
 } from '@/components/portfolio/analysis-types';
+import type {
+  PortfolioConfigurationState,
+  PortfolioPreset,
+} from './preset-config.types';
 
 export interface PortfolioResult {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
@@ -31,7 +36,8 @@ export interface ParameterPanelProps {
   setBrokerMinOrder: (value: number) => void;
   requireDiversification: boolean;
   setRequireDiversification: (value: boolean) => void;
-  lookbackYears: number;
+  activePreset: PortfolioPreset;
+  presetConfigPanel: ReactNode;
   status: 'IDLE' | 'PROCESSING' | 'READY' | 'FAILED';
   statusMessage: string | null;
   canRunOptimization: boolean;

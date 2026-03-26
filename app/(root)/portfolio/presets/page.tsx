@@ -15,8 +15,9 @@ const PRESETS = [
     description:
       'Focuses on high-upside growth stocks with stronger momentum, suitable for long-term capital appreciation.',
     icon: CandlestickChart,
-    isAvailable: false,
-    badge: 'Coming Soon',
+    isAvailable: true,
+    href: '/portfolio/select-stocks?preset=growth',
+    badge: 'Ready',
   },
   {
     title: 'Dividend Portfolio',
@@ -24,17 +25,19 @@ const PRESETS = [
     description:
       'Prioritizes quality dividend-paying companies for steady income and lower overall volatility profile.',
     icon: HandCoins,
-    isAvailable: false,
-    badge: 'Requires API',
+    isAvailable: true,
+    href: '/portfolio/select-stocks?preset=dividend',
+    badge: 'Ready',
   },
   {
-    title: 'Balanced Portfolio',
+    title: 'Mix Portfolio',
     subtitle: 'พอร์ตผสมผสาน',
     description:
       'Blends growth and income assets to target moderate risk with consistent long-term portfolio stability.',
     icon: Scale,
-    isAvailable: false,
-    badge: 'Coming Soon',
+    isAvailable: true,
+    href: '/portfolio/select-stocks?preset=balanced',
+    badge: 'Ready',
   },
   {
     title: 'Custom Portfolio',
@@ -43,7 +46,7 @@ const PRESETS = [
       'Choose assets manually and optimize allocation with AI insights based on your own risk and time horizon.',
     icon: SlidersHorizontal,
     isAvailable: true,
-    href: '/portfolio/select-stocks',
+    href: '/portfolio/select-stocks?preset=custom',
     badge: 'Ready',
   },
 ] as const;
@@ -56,8 +59,8 @@ export default function PortfolioPresetSelectionPage() {
           <p className="text-xs uppercase tracking-[0.16em] text-[#7db8ff]">Portfolio Setup</p>
           <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Select Portfolio Preset</h1>
           <p className="mt-2 max-w-2xl text-sm text-gray-400 sm:text-base">
-            Start your investment journey by choosing a strategy template. You can use Custom Portfolio today,
-            while preset strategies will unlock once the backend API is available.
+            Start your investment journey by choosing a strategy template. Every preset now drives a dynamic
+            configuration form and strategy-specific optimization payload.
           </p>
         </div>
 

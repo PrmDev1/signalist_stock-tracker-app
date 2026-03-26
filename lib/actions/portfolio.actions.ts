@@ -215,13 +215,20 @@ export async function getPortfolioTickers(
     }
 
     const data: TickersResponse = await res.json();
+    const totalFromHeader =
+      Number(res.headers.get('x-total-count') ?? '') ||
+      Number(res.headers.get('x-total') ?? '') ||
+      Number(res.headers.get('x-pagination-total') ?? '');
+    const resolvedCount = Number.isFinite(totalFromHeader) && totalFromHeader > 0
+      ? totalFromHeader
+      : Number(data.count ?? data.data?.length ?? 0);
 
     return {
       success: true,
       tickers: data.data,
       page: data.page,
       size: data.size,
-      count: data.count,
+      count: resolvedCount,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

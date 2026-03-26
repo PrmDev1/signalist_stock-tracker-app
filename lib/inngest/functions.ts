@@ -122,7 +122,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
 export const monitorPriceAlerts = inngest.createFunction(
     { id: 'price-alert-monitor' },
-    [{ event: 'app/alerts.check' }, { cron: '*/1 * * * *' }],
+    [{ event: 'app/alerts.check' }, { cron: '*/10 * * * *' }],
     async ({ step }) => {
         const result = await step.run('check-price-alerts', async () => runPriceAlertCheck());
 
