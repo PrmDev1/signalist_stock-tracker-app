@@ -40,11 +40,10 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
       span: value.span === 180 || value.span === 250 || value.span === 500 ? value.span : 250,
       enableTargetAllocations: Object.keys(value.targetAllocations ?? {}).length > 0,
       targetAllocations: {
-        growth: toPercent(value.targetAllocations.growth ? value.targetAllocations.growth * 100 : undefined, 34),
-        dividend: toPercent(value.targetAllocations.dividend ? value.targetAllocations.dividend * 100 : undefined, 33),
-        balanced: toPercent(value.targetAllocations.balanced ? value.targetAllocations.balanced * 100 : undefined, 33),
-      },
-    },
+        growth: toPercent(value.targetAllocations?.growth ? value.targetAllocations.growth * 100 : undefined, 34),
+        dividend: toPercent(value.targetAllocations?.dividend ? value.targetAllocations.dividend * 100 : undefined, 33),
+        balanced: toPercent(value.targetAllocations?.balanced ? value.targetAllocations.balanced * 100 : undefined, 33),
+      },    },
   });
 
   const customMethod = useWatch({ control, name: 'customMethod' });
@@ -106,7 +105,8 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-300">Method</label>
-          <Select value={customMethod} onValueChange={(next) => setValue('customMethod', next as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
+          <label id="method-label" className="mb-1 block text-sm font-medium text-gray-300">Method</label>
+          <Select value={customMethod} onValueChange={(next) => setValue('customMethod', next as 'auto' | 'ema' | 'mhr', { shouldValidate: true })} aria-labelledby="method-label">
             <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-800 text-white">
               <SelectValue placeholder="เลือกวิธีคำนวณ" />
             </SelectTrigger>
@@ -116,8 +116,6 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
               <SelectItem value="mhr">mhr</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
         <div>
           <label htmlFor="custom-lookback-years" className="mb-1 block text-sm font-medium text-gray-300">
             Lookback Years

@@ -89,6 +89,15 @@ export function toConfigurationState(
 
   const shouldIncludeAllocations = preset === 'balanced' || (preset === 'custom' && values.enableTargetAllocations);
 
+  const allocationSum =
+    values.targetAllocations.growth +
+    values.targetAllocations.dividend +
+    values.targetAllocations.balanced;
+
+  if (shouldIncludeAllocations && Math.abs(allocationSum - 100) > 0.01) {
+    throw new Error(`Target allocations must sum to 100%, got ${allocationSum}%`);
+  }
+
   const targetAllocations = shouldIncludeAllocations
     ? {
         growth: Number((values.targetAllocations.growth / 100).toFixed(4)),
@@ -96,7 +105,6 @@ export function toConfigurationState(
         balanced: Number((values.targetAllocations.balanced / 100).toFixed(4)),
       }
     : {};
-
   return {
     preset,
     customMethod,

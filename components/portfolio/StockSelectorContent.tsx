@@ -78,6 +78,7 @@ export default function StockSelectorContent() {
   const [error, setError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [fetchCapped, setFetchCapped] = useState<boolean>(false);
+  const [finalFetchedCount, setFinalFetchedCount] = useState<number>(0);
   const [showFilters, setShowFilters] = useState(false);
   const UI_PAGE_SIZE = 50;
   const [selectedStockMap, setSelectedStockMap] = useState<Record<string, FilteredStock>>({});
@@ -281,22 +282,57 @@ export default function StockSelectorContent() {
       setError(null);
       setLoadingProgress(0);
       setFetchCapped(false);
+      setFinalFetchedCount(0);
 
       const mergedStocks: CompanyProfile[] = [];
       let page = 1;
       const API_PAGE_SIZE = 500;
       const MAX_PAGES = 20; // safety cap (10,000 stocks)
+      const MAX_RETRIES = 2;
+      const TIMEOUT_MS = 10000;
+      const DELAY_BETWEEN_PAGES = 300;
+
+      // Helper: fetch with timeout
+      async function fetchWithTimeout(fn: () => Promise<any>, timeoutMs: number) {
+        return Promise.race([
+          fn(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+        ]);
+      }
 
       while (true) {
-        const response = await getPortfolioTickers(page, API_PAGE_SIZE, {
-          search: searchTerm || undefined,
-          officeSector: activeFilters.officeSector,
-          sector: activeFilters.sector,
-          exchange: activeFilters.exchange,
-          filerSize: activeFilters.filerSize,
-          isSmallerReporting: activeFilters.isSmallerReporting,
-          isEmergingGrowth: activeFilters.isEmergingGrowth,
-        });
+        let retries = 0;
+        let response;
+        while (retries <= MAX_RETRIES) {
+          try {
+            response = await fetchWithTimeout(
+              () => getPortfolioTickers(page, API_PAGE_SIZE, {
+                search: searchTerm || undefined,
+                officeSector: activeFilters.officeSector,
+                sector: activeFilters.sector,
+                exchange: activeFilters.exchange,
+                filerSize: activeFilters.filerSize,
+                isSmallerReporting: activeFilters.isSmallerReporting,
+                isEmergingGrowth: activeFilters.isEmergingGrowth,
+              }),
+              TIMEOUT_MS
+            );
+            break; // success
+          } catch (err) {
+            retries++;
+            if (retries > MAX_RETRIES) {
+              setError('Failed to fetch stocks (timeout or network error)');
+              setFetchCapped(true);
+              setFinalFetchedCount(mergedStocks.length);
+              setAllStocks(mergedStocks);
+              setLoading(false);
+              setLoadingProgress(0);
+              return;
+            }
+            // Wait before retrying
+            await new Promise((resolve) => setTimeout(resolve, 400 * retries));
+          }
+        }
 
         if (cancelled) return;
 
@@ -317,10 +353,13 @@ export default function StockSelectorContent() {
         }
         if (page >= MAX_PAGES) {
           setFetchCapped(true);
+          setFinalFetchedCount(mergedStocks.length);
           break;
         }
 
         page += 1;
+        // Add delay between page requests
+        await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PAGES));
       }
 
       if (cancelled) return;
@@ -512,7 +551,7 @@ export default function StockSelectorContent() {
             <div className="flex items-center gap-3 m-4 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
               <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
               <p className="text-sm text-yellow-400">
-                Warning: Fetched stocks reached the safety cap ({loadingProgress}+). The API may be returning too many pages. Please check your filters or try again later.
+                Warning: Fetched stocks reached the safety cap ({finalFetchedCount}+). The API may be returning too many pages. Please check your filters or try again later.
               </p>
             </div>
           )}

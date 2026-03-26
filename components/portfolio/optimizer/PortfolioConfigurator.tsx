@@ -57,11 +57,10 @@ export default function PortfolioConfigurator({
       span: initialConfig.span,
       enableTargetAllocations: Object.keys(initialConfig.targetAllocations || {}).length > 0,
       targetAllocations: {
-        growth: Math.round((initialConfig.targetAllocations.growth ?? 0) * 100),
-        dividend: Math.round((initialConfig.targetAllocations.dividend ?? 0) * 100),
-        balanced: Math.round((initialConfig.targetAllocations.balanced ?? 0) * 100),
-      },
-    };
+        growth: Math.round((initialConfig.targetAllocations?.growth ?? 0) * 100),
+        dividend: Math.round((initialConfig.targetAllocations?.dividend ?? 0) * 100),
+        balanced: Math.round((initialConfig.targetAllocations?.balanced ?? 0) * 100),
+      },    };
   }, [initialConfig, initialPreset]);
 
   const {
@@ -170,7 +169,8 @@ export default function PortfolioConfigurator({
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-300">Custom Method</label>
           {preset === 'custom' ? (
-            <Select value={getValues('customMethod')} onValueChange={(value) => setValue('customMethod', value as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
+          {preset === 'custom' ? (
+            <Select value={customMethod} onValueChange={(value) => setValue('customMethod', value as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
               <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-800 text-white">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
@@ -179,9 +179,7 @@ export default function PortfolioConfigurator({
                 <SelectItem value="ema">ema</SelectItem>
                 <SelectItem value="mhr">mhr</SelectItem>
               </SelectContent>
-            </Select>
-          ) : (
-            <input
+            </Select>            <input
               value={HARD_CODED_METHOD_BY_PRESET[preset]}
               disabled
               className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-300"

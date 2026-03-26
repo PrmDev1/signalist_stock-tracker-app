@@ -36,11 +36,10 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
     defaultValues: {
       lookbackYears: Number.isFinite(value.lookbackYears) ? value.lookbackYears : 7,
       targetAllocations: {
-        growth: toPercent(value.targetAllocations.growth ? value.targetAllocations.growth * 100 : undefined, 40),
-        dividend: toPercent(value.targetAllocations.dividend ? value.targetAllocations.dividend * 100 : undefined, 30),
-        balanced: toPercent(value.targetAllocations.balanced ? value.targetAllocations.balanced * 100 : undefined, 30),
-      },
-    },
+        growth: toPercent(value.targetAllocations.growth != null ? value.targetAllocations.growth * 100 : undefined, 40),
+        dividend: toPercent(value.targetAllocations.dividend != null ? value.targetAllocations.dividend * 100 : undefined, 30),
+        balanced: toPercent(value.targetAllocations.balanced != null ? value.targetAllocations.balanced * 100 : undefined, 30),
+      },    },
   });
 
   const lookbackYears = useWatch({ control, name: 'lookbackYears' });
