@@ -163,7 +163,7 @@ export default function StockSelectorContent() {
   const presetFilteredStocks = useMemo(() => {
     if (filterTag === 'all') return sortedStocks;
     return sortedStocks.filter((stock) => {
-      const tag = String(stock.portfolioCategory ?? '').trim().toLowerCase();
+      const tag = String(stock.sectorPerformanceTier ?? '').trim().toLowerCase();
       return tag === filterTag;
     });
   }, [filterTag, sortedStocks]);
@@ -224,8 +224,8 @@ export default function StockSelectorContent() {
     name: stock.companyName,
     sector: stock.sector,
     marketCap: 0,
-    tag: typeof stock.portfolioCategory === 'string' && stock.portfolioCategory.trim().length > 0
-      ? stock.portfolioCategory.trim().toLowerCase()
+    tag: typeof stock.sectorPerformanceTier === 'string' && stock.sectorPerformanceTier.trim().length > 0
+      ? stock.sectorPerformanceTier.trim().toLowerCase()
       : undefined,
     latestPrice: Number.isFinite(stock.latestPrice) ? Number(stock.latestPrice) : undefined,
     dayChangePercent:

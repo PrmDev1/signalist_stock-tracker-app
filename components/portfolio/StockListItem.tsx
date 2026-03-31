@@ -95,7 +95,7 @@ export default function StockListItem({
     : null;
   const hasChange = change !== null;
   const isPositive = hasChange && change >= 0;
-  const categoryTag = getCategoryTagStyle(stock.portfolioCategory);
+  const categoryTag = getCategoryTagStyle(stock.sectorPerformanceTier);
 
   return (
     <div

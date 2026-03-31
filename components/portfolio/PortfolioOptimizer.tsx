@@ -93,6 +93,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       growth: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'growth'),
       dividend: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'dividend'),
       balanced: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'balanced'),
+      core: selectedStocks.some((stock) => String(stock.tag ?? '').trim().toLowerCase() === 'core'),
     }),
     [selectedStocks]
   );
@@ -244,7 +245,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       presetConfig,
     });
 
-    router.push('/portfolio/optimizer/start');
+    router.push(`/portfolio/optimizer/start?preset=${activePreset}`);
   };
 
   useEffect(() => {
@@ -405,7 +406,13 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
           <button
             type="button"
-            onClick={() => router.push(mode === 'results' ? '/portfolio/optimizer' : selectStocksUrl)}
+            onClick={() => {
+              if (mode === 'results') {
+                router.push(`/portfolio/optimizer?preset=${activePreset}`);
+              } else {
+                router.push(selectStocksUrl);
+              }
+            }}
             className="mb-4 inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-600"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -459,7 +466,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
                 ) : activePreset === 'balanced' ? (
                   <BalancedConfig value={presetConfig} onChange={setPresetConfig} availableTagAllocations={availableTagAllocations} />
                 ) : (
-                  <CustomConfig value={presetConfig} onChange={setPresetConfig} />
+                  <CustomConfig value={presetConfig} onChange={setPresetConfig} availableTagAllocations={availableTagAllocations} />
                 )
               }
               status={status}

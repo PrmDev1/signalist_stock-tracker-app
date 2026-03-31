@@ -186,7 +186,7 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
               ...asset,
               companyName: exact.companyName || asset.companyName,
               price,
-              tag: normalizeTag(asset.tag !== 'unknown' ? asset.tag : exact.portfolioCategory),
+              tag: normalizeTag(asset.tag !== 'unknown' ? asset.tag : exact.sectorPerformanceTier),
             };
           } catch {
             return asset;
@@ -238,7 +238,7 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
               symbol,
               companyName: item.companyName || symbol,
               price,
-              tag: normalizeTag(item.portfolioCategory),
+              tag: normalizeTag(item.sectorPerformanceTier),
             } satisfies StockSuggestion;
           })
           .filter((item) => item.symbol && !existing.has(item.symbol));

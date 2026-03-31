@@ -10,6 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface CustomConfigProps {
   value: PortfolioConfigurationState;
   onChange: (next: PortfolioConfigurationState) => void;
+  availableTagAllocations: {
+    growth: boolean;
+    dividend: boolean;
+    balanced: boolean;
+    core: boolean;
+  };
 }
 
 interface CustomFormValues {
@@ -21,6 +27,7 @@ interface CustomFormValues {
     growth: number;
     dividend: number;
     balanced: number;
+    core: number;
   };
 }
 
@@ -29,7 +36,7 @@ function toPercent(value: number | undefined, fallback: number): number {
   return Math.max(0, Math.min(100, Math.round(Number(value))));
 }
 
-export default function CustomConfig({ value, onChange }: CustomConfigProps) {
+export default function CustomConfig({ value, onChange, availableTagAllocations }: CustomConfigProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { control, register, setValue } = useForm<CustomFormValues>({
@@ -40,10 +47,12 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
       span: value.span === 180 || value.span === 250 || value.span === 500 ? value.span : 250,
       enableTargetAllocations: Object.keys(value.targetAllocations ?? {}).length > 0,
       targetAllocations: {
-        growth: toPercent(value.targetAllocations?.growth ? value.targetAllocations.growth * 100 : undefined, 34),
-        dividend: toPercent(value.targetAllocations?.dividend ? value.targetAllocations.dividend * 100 : undefined, 33),
-        balanced: toPercent(value.targetAllocations?.balanced ? value.targetAllocations.balanced * 100 : undefined, 33),
-      },    },
+        growth: toPercent(value.targetAllocations.growth != null ? value.targetAllocations.growth * 100 : undefined, 40),
+        dividend: toPercent(value.targetAllocations.dividend != null ? value.targetAllocations.dividend * 100 : undefined, 30),
+        balanced: toPercent(value.targetAllocations.balanced != null ? value.targetAllocations.balanced * 100 : undefined, 20),
+        core: toPercent(value.targetAllocations.Core != null ? value.targetAllocations.Core * 100 : undefined, 10),
+      },
+    },
   });
 
   const customMethod = useWatch({ control, name: 'customMethod' });
@@ -53,18 +62,61 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
   const growth = useWatch({ control, name: 'targetAllocations.growth' });
   const dividend = useWatch({ control, name: 'targetAllocations.dividend' });
   const balanced = useWatch({ control, name: 'targetAllocations.balanced' });
+  const core = useWatch({ control, name: 'targetAllocations.core' });
 
-  const total = (growth ?? 0) + (dividend ?? 0) + (balanced ?? 0);
+  // Zero out unavailable types whenever availableTagAllocations changes
+  useEffect(() => {
+    if (!availableTagAllocations.growth && (growth ?? 0) !== 0) {
+      setValue('targetAllocations.growth', 0, { shouldValidate: true });
+    }
+    if (!availableTagAllocations.dividend && (dividend ?? 0) !== 0) {
+      setValue('targetAllocations.dividend', 0, { shouldValidate: true });
+    }
+    if (!availableTagAllocations.balanced && (balanced ?? 0) !== 0) {
+      setValue('targetAllocations.balanced', 0, { shouldValidate: true });
+    }
+    if (!availableTagAllocations.core && (core ?? 0) !== 0) {
+      setValue('targetAllocations.core', 0, { shouldValidate: true });
+    }
+  }, [availableTagAllocations.balanced, availableTagAllocations.core, availableTagAllocations.dividend, availableTagAllocations.growth, balanced, core, dividend, growth, setValue]);
+
+  const effectiveGrowth = availableTagAllocations.growth ? (growth ?? 0) : 0;
+  const effectiveDividend = availableTagAllocations.dividend ? (dividend ?? 0) : 0;
+  const effectiveBalanced = availableTagAllocations.balanced ? (balanced ?? 0) : 0;
+  const effectiveCore = availableTagAllocations.core ? (core ?? 0) : 0;
+  const total = effectiveGrowth + effectiveDividend + effectiveBalanced + effectiveCore;
+  const tone = total === 100 ? 'text-emerald-300' : total > 100 ? 'text-rose-300' : 'text-amber-300';
+
+  const handleAllocationChange = (type: 'growth' | 'dividend' | 'balanced' | 'core', nextValue: number) => {
+    const rounded = Math.max(0, Math.min(100, Math.round(nextValue)));
+    const g = type === 'growth' ? rounded : (growth ?? 0);
+    const d = type === 'dividend' ? rounded : (dividend ?? 0);
+    const b = type === 'balanced' ? rounded : (balanced ?? 0);
+    const c = type === 'core' ? rounded : (core ?? 0);
+
+    const effG = availableTagAllocations.growth ? g : 0;
+    const effD = availableTagAllocations.dividend ? d : 0;
+    const effB = availableTagAllocations.balanced ? b : 0;
+    const effC = availableTagAllocations.core ? c : 0;
+
+    if (effG + effD + effB + effC > 100) return;
+
+    if (type === 'growth') setValue('targetAllocations.growth', rounded, { shouldValidate: true });
+    if (type === 'dividend') setValue('targetAllocations.dividend', rounded, { shouldValidate: true });
+    if (type === 'balanced') setValue('targetAllocations.balanced', rounded, { shouldValidate: true });
+    if (type === 'core') setValue('targetAllocations.core', rounded, { shouldValidate: true });
+  };
 
   const allocationPayload = useMemo<Record<string, number>>(() => {
     if (!enableTargetAllocations) return {} as Record<string, number>;
 
     return {
-      growth: Number(((growth ?? 0) / 100).toFixed(4)),
-      dividend: Number(((dividend ?? 0) / 100).toFixed(4)),
-      balanced: Number(((balanced ?? 0) / 100).toFixed(4)),
+      growth: Number(((effectiveGrowth) / 100).toFixed(4)),
+      dividend: Number(((effectiveDividend) / 100).toFixed(4)),
+      balanced: Number(((effectiveBalanced) / 100).toFixed(4)),
+      Core: Number(((effectiveCore) / 100).toFixed(4)),
     };
-  }, [balanced, dividend, enableTargetAllocations, growth]);
+  }, [effectiveBalanced, effectiveCore, effectiveDividend, effectiveGrowth, enableTargetAllocations]);
 
   const lastSentRef = useRef<string>('');
 
@@ -105,8 +157,7 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-300">Method</label>
-          <label id="method-label" className="mb-1 block text-sm font-medium text-gray-300">Method</label>
-          <Select value={customMethod} onValueChange={(next) => setValue('customMethod', next as 'auto' | 'ema' | 'mhr', { shouldValidate: true })} aria-labelledby="method-label">
+          <Select value={customMethod} onValueChange={(next) => setValue('customMethod', next as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
             <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-800 text-white">
               <SelectValue placeholder="เลือกวิธีคำนวณ" />
             </SelectTrigger>
@@ -116,6 +167,8 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
               <SelectItem value="mhr">mhr</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
         <div>
           <label htmlFor="custom-lookback-years" className="mb-1 block text-sm font-medium text-gray-300">
             Lookback Years
@@ -171,27 +224,41 @@ export default function CustomConfig({ value, onChange }: CustomConfigProps) {
 
             {enableTargetAllocations ? (
               <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-800/70 p-3">
-                <p className="text-xs text-gray-400">รวมสัดส่วนตอนนี้ {total}%</p>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">ปรับสัดส่วนได้เฉพาะประเภทที่มีในรายการหุ้น</p>
+                  <p className={`text-sm font-semibold ${tone}`}>รวม {total}%</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <AllocationSlider
                     label="Growth"
                     value={growth ?? 0}
-                    onChange={(next) => setValue('targetAllocations.growth', next, { shouldValidate: true })}
+                    onChange={(next) => handleAllocationChange('growth', next)}
                     colorClassName="bg-cyan-500/10 text-cyan-200"
+                    disabled={!availableTagAllocations.growth}
                   />
                   <AllocationSlider
                     label="Dividend"
                     value={dividend ?? 0}
-                    onChange={(next) => setValue('targetAllocations.dividend', next, { shouldValidate: true })}
+                    onChange={(next) => handleAllocationChange('dividend', next)}
                     colorClassName="bg-emerald-500/10 text-emerald-200"
+                    disabled={!availableTagAllocations.dividend}
                   />
                   <AllocationSlider
                     label="Balanced"
                     value={balanced ?? 0}
-                    onChange={(next) => setValue('targetAllocations.balanced', next, { shouldValidate: true })}
+                    onChange={(next) => handleAllocationChange('balanced', next)}
                     colorClassName="bg-indigo-500/10 text-indigo-200"
+                    disabled={!availableTagAllocations.balanced}
+                  />
+                  <AllocationSlider
+                    label="Core"
+                    value={core ?? 0}
+                    onChange={(next) => handleAllocationChange('core', next)}
+                    colorClassName="bg-amber-500/10 text-amber-200"
+                    disabled={!availableTagAllocations.core}
                   />
                 </div>
+                <p className="text-xs text-gray-400">ตัวอย่าง payload: {"{\"growth\": 0.40, \"dividend\": 0.30, \"balanced\": 0.20, \"Core\": 0.10}"}</p>
               </div>
             ) : (
               <p className="text-xs text-gray-500">เมื่อปิดไว้ ระบบจะส่ง targetAllocations เป็น {}</p>

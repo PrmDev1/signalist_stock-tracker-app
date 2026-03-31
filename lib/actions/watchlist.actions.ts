@@ -171,6 +171,8 @@ export const getWatchlistWithData = async () => {
 
     return JSON.parse(JSON.stringify(stocksWithData));
   } catch (error) {
+    const { isRedirectError } = await import('next/dist/client/components/redirect');
+    if (isRedirectError(error)) throw error;
     console.error('Error loading watchlist:', error);
     throw new Error('Failed to fetch watchlist');
   }

@@ -6,6 +6,7 @@ export interface PortfolioTargetAllocations {
   growth: number;
   dividend: number;
   balanced: number;
+  core: number;
 }
 
 export interface PortfolioConfiguratorFormValues {
@@ -48,7 +49,7 @@ export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioCo
         lookbackYears: 7,
         span: 250,
         enableTargetAllocations: false,
-        targetAllocations: { growth: 40, dividend: 30, balanced: 30 },
+        targetAllocations: { growth: 40, dividend: 30, balanced: 20, core: 10 },
       };
     case 'dividend':
       return {
@@ -57,7 +58,7 @@ export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioCo
         lookbackYears: 10,
         span: 250,
         enableTargetAllocations: false,
-        targetAllocations: { growth: 30, dividend: 50, balanced: 20 },
+        targetAllocations: { growth: 30, dividend: 40, balanced: 20, core: 10 },
       };
     case 'balanced':
       return {
@@ -66,7 +67,7 @@ export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioCo
         lookbackYears: 7,
         span: 250,
         enableTargetAllocations: true,
-        targetAllocations: { growth: 40, dividend: 30, balanced: 30 },
+        targetAllocations: { growth: 40, dividend: 30, balanced: 20, core: 10 },
       };
     default:
       return {
@@ -75,7 +76,7 @@ export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioCo
         lookbackYears: 5,
         span: 250,
         enableTargetAllocations: false,
-        targetAllocations: { growth: 34, dividend: 33, balanced: 33 },
+        targetAllocations: { growth: 40, dividend: 30, balanced: 20, core: 10 },
       };
   }
 }
@@ -92,17 +93,19 @@ export function toConfigurationState(
   const allocationSum =
     values.targetAllocations.growth +
     values.targetAllocations.dividend +
-    values.targetAllocations.balanced;
+    values.targetAllocations.balanced +
+    values.targetAllocations.core;
 
   if (shouldIncludeAllocations && Math.abs(allocationSum - 100) > 0.01) {
     throw new Error(`Target allocations must sum to 100%, got ${allocationSum}%`);
   }
 
-  const targetAllocations = shouldIncludeAllocations
+  const targetAllocations: Record<string, number> = shouldIncludeAllocations
     ? {
         growth: Number((values.targetAllocations.growth / 100).toFixed(4)),
         dividend: Number((values.targetAllocations.dividend / 100).toFixed(4)),
         balanced: Number((values.targetAllocations.balanced / 100).toFixed(4)),
+        Core: Number((values.targetAllocations.core / 100).toFixed(4)),
       }
     : {};
   return {

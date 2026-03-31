@@ -57,10 +57,12 @@ export default function PortfolioConfigurator({
       span: initialConfig.span,
       enableTargetAllocations: Object.keys(initialConfig.targetAllocations || {}).length > 0,
       targetAllocations: {
-        growth: Math.round((initialConfig.targetAllocations?.growth ?? 0) * 100),
-        dividend: Math.round((initialConfig.targetAllocations?.dividend ?? 0) * 100),
-        balanced: Math.round((initialConfig.targetAllocations?.balanced ?? 0) * 100),
-      },    };
+        growth: Math.round((initialConfig.targetAllocations.growth ?? 0) * 100),
+        dividend: Math.round((initialConfig.targetAllocations.dividend ?? 0) * 100),
+        balanced: Math.round((initialConfig.targetAllocations.balanced ?? 0) * 100),
+        core: Math.round((initialConfig.targetAllocations.Core ?? 0) * 100),
+      },
+    };
   }, [initialConfig, initialPreset]);
 
   const {
@@ -83,6 +85,7 @@ export default function PortfolioConfigurator({
   const growthAllocation = useWatch({ control, name: 'targetAllocations.growth' });
   const dividendAllocation = useWatch({ control, name: 'targetAllocations.dividend' });
   const balancedAllocation = useWatch({ control, name: 'targetAllocations.balanced' });
+  const coreAllocation = useWatch({ control, name: 'targetAllocations.core' });
 
   useEffect(() => {
     if (!preset) return;
@@ -111,11 +114,12 @@ export default function PortfolioConfigurator({
       setValue('enableTargetAllocations', true, { shouldValidate: true });
 
       const currentAllocations = getValues('targetAllocations');
-      const sum = (currentAllocations?.growth ?? 0) + (currentAllocations?.dividend ?? 0) + (currentAllocations?.balanced ?? 0);
+      const sum = (currentAllocations?.growth ?? 0) + (currentAllocations?.dividend ?? 0) + (currentAllocations?.balanced ?? 0) + (currentAllocations?.core ?? 0);
       if (sum === 0) {
         setValue('targetAllocations.growth', 40, { shouldValidate: true });
         setValue('targetAllocations.dividend', 30, { shouldValidate: true });
-        setValue('targetAllocations.balanced', 30, { shouldValidate: true });
+        setValue('targetAllocations.balanced', 20, { shouldValidate: true });
+        setValue('targetAllocations.core', 10, { shouldValidate: true });
       }
     }
   }, [getValues, preset, setValue]);
@@ -133,6 +137,7 @@ export default function PortfolioConfigurator({
     onConfigChange(nextConfig);
   }, [
     balancedAllocation,
+    coreAllocation,
     dividendAllocation,
     enableTargetAllocations,
     getValues,
@@ -143,7 +148,7 @@ export default function PortfolioConfigurator({
     span,
   ]);
 
-  const allocationSum = (growthAllocation ?? 0) + (dividendAllocation ?? 0) + (balancedAllocation ?? 0);
+  const allocationSum = (growthAllocation ?? 0) + (dividendAllocation ?? 0) + (balancedAllocation ?? 0) + (coreAllocation ?? 0);
   const shouldShowAllocation = preset === 'balanced' || (preset === 'custom' && Boolean(enableTargetAllocations));
 
   const allocationTone = allocationSum === 100 ? 'text-emerald-300' : allocationSum > 100 ? 'text-rose-300' : 'text-amber-300';
@@ -169,8 +174,7 @@ export default function PortfolioConfigurator({
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-300">Custom Method</label>
           {preset === 'custom' ? (
-          {preset === 'custom' ? (
-            <Select value={customMethod} onValueChange={(value) => setValue('customMethod', value as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
+            <Select value={getValues('customMethod')} onValueChange={(value) => setValue('customMethod', value as 'auto' | 'ema' | 'mhr', { shouldValidate: true })}>
               <SelectTrigger className="w-full rounded-lg border-gray-600 bg-gray-800 text-white">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
@@ -179,7 +183,9 @@ export default function PortfolioConfigurator({
                 <SelectItem value="ema">ema</SelectItem>
                 <SelectItem value="mhr">mhr</SelectItem>
               </SelectContent>
-            </Select>            <input
+            </Select>
+          ) : (
+            <input
               value={HARD_CODED_METHOD_BY_PRESET[preset]}
               disabled
               className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-300"
@@ -271,7 +277,7 @@ export default function PortfolioConfigurator({
             <div>
               <p className="text-sm font-semibold text-gray-100">Target Allocations</p>
               <p className="mt-1 text-xs text-gray-400">
-                Recommended total is up to 100% (example: {'{"growth": 0.40, "dividend": 0.30, "balanced": 0.30}'}).
+                Recommended total is up to 100% (example: {'{"growth": 0.40, "dividend": 0.30, "balanced": 0.20, "Core": 0.10}'}).
               </p>
             </div>
             <div className="text-right">
@@ -280,7 +286,7 @@ export default function PortfolioConfigurator({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <AllocationSlider
               label="Growth"
               value={growthAllocation ?? 0}
@@ -298,6 +304,12 @@ export default function PortfolioConfigurator({
               value={balancedAllocation ?? 0}
               onChange={(value) => setValue('targetAllocations.balanced', value, { shouldValidate: true })}
               colorClassName="bg-indigo-500/10 text-indigo-200"
+            />
+            <AllocationSlider
+              label="Core"
+              value={coreAllocation ?? 0}
+              onChange={(value) => setValue('targetAllocations.core', value, { shouldValidate: true })}
+              colorClassName="bg-amber-500/10 text-amber-200"
             />
           </div>
         </div>

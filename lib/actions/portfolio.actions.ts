@@ -15,7 +15,7 @@ export interface CompanyProfile {
   primaryExchange: string;
   officeSector?: string;
   sector: string;
-  portfolioCategory?: 'Growth' | 'Dividend' | 'Balanced' | 'Core' | 'Underperformer' | string;
+  sectorPerformanceTier?: 'Growth' | 'Dividend' | 'Balanced' | 'Core' | 'Underperformer' | string;
   filerSize: string;
   isSmallerReporting: boolean;
   isEmergingGrowth: boolean;

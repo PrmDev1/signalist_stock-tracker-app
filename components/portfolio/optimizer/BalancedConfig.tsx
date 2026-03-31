@@ -13,6 +13,7 @@ interface BalancedConfigProps {
     growth: boolean;
     dividend: boolean;
     balanced: boolean;
+    core: boolean;
   };
 }
 
@@ -22,6 +23,7 @@ interface BalancedFormValues {
     growth: number;
     dividend: number;
     balanced: number;
+    core: number;
   };
 }
 
@@ -38,19 +40,23 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
       targetAllocations: {
         growth: toPercent(value.targetAllocations.growth != null ? value.targetAllocations.growth * 100 : undefined, 40),
         dividend: toPercent(value.targetAllocations.dividend != null ? value.targetAllocations.dividend * 100 : undefined, 30),
-        balanced: toPercent(value.targetAllocations.balanced != null ? value.targetAllocations.balanced * 100 : undefined, 30),
-      },    },
+        balanced: toPercent(value.targetAllocations.balanced != null ? value.targetAllocations.balanced * 100 : undefined, 20),
+        core: toPercent(value.targetAllocations.Core != null ? value.targetAllocations.Core * 100 : undefined, 10),
+      },
+    },
   });
 
   const lookbackYears = useWatch({ control, name: 'lookbackYears' });
   const growth = useWatch({ control, name: 'targetAllocations.growth' });
   const dividend = useWatch({ control, name: 'targetAllocations.dividend' });
   const balanced = useWatch({ control, name: 'targetAllocations.balanced' });
+  const core = useWatch({ control, name: 'targetAllocations.core' });
 
   const effectiveGrowth = availableTagAllocations.growth ? (growth ?? 0) : 0;
   const effectiveDividend = availableTagAllocations.dividend ? (dividend ?? 0) : 0;
   const effectiveBalanced = availableTagAllocations.balanced ? (balanced ?? 0) : 0;
-  const total = effectiveGrowth + effectiveDividend + effectiveBalanced;
+  const effectiveCore = availableTagAllocations.core ? (core ?? 0) : 0;
+  const total = effectiveGrowth + effectiveDividend + effectiveBalanced + effectiveCore;
   const tone = total === 100 ? 'text-emerald-300' : total > 100 ? 'text-rose-300' : 'text-amber-300';
 
   const payloadAllocations = useMemo(
@@ -58,8 +64,9 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
       growth: Number(((effectiveGrowth ?? 0) / 100).toFixed(4)),
       dividend: Number(((effectiveDividend ?? 0) / 100).toFixed(4)),
       balanced: Number(((effectiveBalanced ?? 0) / 100).toFixed(4)),
+      Core: Number(((effectiveCore ?? 0) / 100).toFixed(4)),
     }),
-    [effectiveBalanced, effectiveDividend, effectiveGrowth]
+    [effectiveBalanced, effectiveCore, effectiveDividend, effectiveGrowth]
   );
 
   const lastSentRef = useRef<string>('');
@@ -74,10 +81,12 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
     const currentGrowth = growth ?? 0;
     const currentDividend = dividend ?? 0;
     const currentBalanced = balanced ?? 0;
+    const currentCore = core ?? 0;
 
     const nextGrowth = clampWithAvailable(currentGrowth, 0, availableTagAllocations.growth);
     const nextDividend = clampWithAvailable(currentDividend, nextGrowth, availableTagAllocations.dividend);
     const nextBalanced = clampWithAvailable(currentBalanced, nextGrowth + nextDividend, availableTagAllocations.balanced);
+    const nextCore = clampWithAvailable(currentCore, nextGrowth + nextDividend + nextBalanced, availableTagAllocations.core);
 
     if (nextGrowth !== currentGrowth) {
       setValue('targetAllocations.growth', nextGrowth, { shouldValidate: true });
@@ -88,7 +97,10 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
     if (nextBalanced !== currentBalanced) {
       setValue('targetAllocations.balanced', nextBalanced, { shouldValidate: true });
     }
-  }, [availableTagAllocations.balanced, availableTagAllocations.dividend, availableTagAllocations.growth, balanced, dividend, growth, setValue]);
+    if (nextCore !== currentCore) {
+      setValue('targetAllocations.core', nextCore, { shouldValidate: true });
+    }
+  }, [availableTagAllocations.balanced, availableTagAllocations.core, availableTagAllocations.dividend, availableTagAllocations.growth, balanced, core, dividend, growth, setValue]);
 
   useEffect(() => {
     const next: PortfolioConfigurationState = {
@@ -107,21 +119,24 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
     onChange(next);
   }, [lookbackYears, onChange, payloadAllocations]);
 
-  const handleAllocationChange = (type: 'growth' | 'dividend' | 'balanced', nextValue: number) => {
+  const handleAllocationChange = (type: 'growth' | 'dividend' | 'balanced' | 'core', nextValue: number) => {
     const rounded = Math.max(0, Math.min(100, Math.round(nextValue)));
     const g = type === 'growth' ? rounded : (growth ?? 0);
     const d = type === 'dividend' ? rounded : (dividend ?? 0);
     const b = type === 'balanced' ? rounded : (balanced ?? 0);
+    const c = type === 'core' ? rounded : (core ?? 0);
 
     const effG = availableTagAllocations.growth ? g : 0;
     const effD = availableTagAllocations.dividend ? d : 0;
     const effB = availableTagAllocations.balanced ? b : 0;
+    const effC = availableTagAllocations.core ? c : 0;
 
-    if (effG + effD + effB > 100) return;
+    if (effG + effD + effB + effC > 100) return;
 
     if (type === 'growth') setValue('targetAllocations.growth', rounded, { shouldValidate: true });
     if (type === 'dividend') setValue('targetAllocations.dividend', rounded, { shouldValidate: true });
     if (type === 'balanced') setValue('targetAllocations.balanced', rounded, { shouldValidate: true });
+    if (type === 'core') setValue('targetAllocations.core', rounded, { shouldValidate: true });
   };
 
   return (
@@ -160,12 +175,12 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-gray-100">Target Allocations</p>
-            <p className="text-xs text-gray-400">ลองปรับสัดส่วน Growth / Dividend / Balanced ให้รวมกันใกล้ 100%</p>
+            <p className="text-xs text-gray-400">ลองปรับสัดส่วน Growth / Dividend / Balanced / Core ให้รวมกันใกล้ 100%</p>
           </div>
           <div className={`text-sm font-semibold ${tone}`}>รวม {total}%</div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <AllocationSlider
             label="Growth"
             value={growth ?? 0}
@@ -187,9 +202,16 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
             colorClassName="bg-indigo-500/10 text-indigo-200"
             disabled={!availableTagAllocations.balanced}
           />
+          <AllocationSlider
+            label="Core"
+            value={core ?? 0}
+            onChange={(next) => handleAllocationChange('core', next)}
+            colorClassName="bg-amber-500/10 text-amber-200"
+            disabled={!availableTagAllocations.core}
+          />
         </div>
 
-        <p className="text-xs text-gray-400">ตัวอย่าง payload: {"{\"growth\": 0.40, \"dividend\": 0.30, \"balanced\": 0.30}"}</p>
+        <p className="text-xs text-gray-400">ตัวอย่าง payload: {"{\"growth\": 0.40, \"dividend\": 0.30, \"balanced\": 0.20, \"Core\": 0.10}"}</p>
       </div>
     </section>
   );
