@@ -3,6 +3,7 @@ export const NAV_ITEMS = [
     { href: '/search', label: 'Search' },
     { href: '/watchlist', label: 'Watchlist' },
     { href: '/portfolio', label: 'Portfolio' },
+    { href: '/community-portfolio', label: 'Community Portfolio' },
 ];
 
 // Sign-up form select options

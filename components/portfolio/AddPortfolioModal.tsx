@@ -22,12 +22,12 @@ export default function AddPortfolioModal({ onClose }: Props) {
         </h2>
 
         <p className="text-sm text-gray-400 mb-6">
-          Pick a portfolio preset to start your setup
+          Start from a preset and build a portfolio tailored to your own strategy
         </p>
 
         <div className="bg-neutral-800 p-4 rounded-xl mb-6">
           <p className="text-sm text-gray-300">
-            👛 Start with a strategy preset. Custom Portfolio is available now and will take you directly to Select Asset.
+            Choose a preset that matches your investment style, then refine the stock selection and optimization settings in your private workspace.
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export default function AddPortfolioModal({ onClose }: Props) {
             onClick={handleCreate}
             className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-600 transition"
           >
-            Choose Preset
+            Select Preset
           </button>
         </div>
       </div>

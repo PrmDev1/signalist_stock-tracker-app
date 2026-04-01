@@ -18,7 +18,7 @@ export default function PortfolioEmptyState() {
         href="/portfolio/presets"
         className="px-6 py-3 bg-emerald-500 text-black font-semibold rounded-xl hover:bg-emerald-600 transition-colors"
       >
-        Create Your First Portfolio
+        Select a Preset to Start
       </Link>
     </div>
   );
