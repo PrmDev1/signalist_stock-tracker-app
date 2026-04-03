@@ -1,5 +1,6 @@
-import Header from "@/components/Header";
+import MainLayout from "@/components/MainLayout";
 import {auth} from "@/lib/better-auth/auth";
+import {searchStocks} from "@/lib/actions/finnhub.actions";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
 
@@ -14,14 +15,10 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
         email: session.user.email,
     }
 
-    return (
-        <main className="min-h-screen text-gray-400">
-            <Header user={user} />
+    const initialStocks = await searchStocks();
 
-            <div className="container py-10">
-                {children}
-            </div>
-        </main>
+    return (
+        <MainLayout user={user} initialStocks={initialStocks}>{children}</MainLayout>
     )
 }
 export default Layout

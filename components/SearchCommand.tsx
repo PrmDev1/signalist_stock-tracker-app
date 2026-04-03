@@ -8,7 +8,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, Search, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { searchStocks } from '@/lib/actions/finnhub.actions';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -94,6 +94,32 @@ export default function SearchCommand({
         <span onClick={() => setOpen(true)} className='search-text'>
           {label}
         </span>
+      ) : renderAs === 'input' ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
+          className="group flex h-14 w-full items-center gap-3 rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] px-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300 hover:border-[#343a52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
+        >
+          <Search className="h-4 w-4 shrink-0 text-gray-500 transition-colors duration-300 group-hover:text-gray-300" />
+          <input
+            readOnly
+            value=""
+            onFocus={() => setOpen(true)}
+            placeholder="Search for stocks..."
+            className="pointer-events-none h-full w-full bg-transparent text-[15px] text-white placeholder:text-[#7c839a] focus:outline-none"
+            aria-label="Search for stocks"
+          />
+          <div className="hidden shrink-0 items-center rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-gray-400 sm:inline-flex">
+            Ctrl/Cmd + K
+          </div>
+        </div>
       ) : (
         <Button onClick={() => setOpen(true)} className='search-btn'>
           {label}

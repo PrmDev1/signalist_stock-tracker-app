@@ -102,6 +102,7 @@ export interface SavedPortfolioCardData {
   riskLevel: 'low' | 'medium' | 'high';
   volatility: number;
   expectedReturn: number;
+  sharpeRatio?: number;
   updatedAt: string;
 }
 
@@ -119,6 +120,7 @@ interface UpdateSavedPortfolioInput {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   expectedReturn: number;
   volatility: number;
+  sharpeRatio?: number;
   initialCapital: number;
   riskLevel: 'low' | 'medium' | 'high';
   modelName?: 'mvo' | 'semi';
@@ -331,7 +333,10 @@ export async function savePortfolioToDatabase(
   monthlyDca: number = 0,
   targetYears: number = 10,
   backtestAndMetrics?: BacktestAndMetrics | null,
-  riskRewardProfile?: RiskRewardProfile | null
+  riskRewardProfile?: RiskRewardProfile | null,
+  lookbackYears?: number,
+  requireDiversification?: boolean,
+  sharpeRatio?: number
 ): Promise<{
   success: boolean;
   portfolioId?: string;
@@ -356,6 +361,9 @@ export async function savePortfolioToDatabase(
     const normalizedTargetYears = Number.isFinite(targetYears)
       ? Math.min(20, Math.max(1, Number(targetYears)))
       : 10;
+    const normalizedLookbackYears = Number.isFinite(lookbackYears)
+      ? Math.min(20, Math.max(1, Number(lookbackYears)))
+      : 5;
 
     const normalizedTickerTags = Object.entries(tickerTags || {}).reduce<Record<string, string>>((acc, [ticker, tag]) => {
       const normalizedTicker = String(ticker).trim().toUpperCase();
@@ -378,14 +386,20 @@ export async function savePortfolioToDatabase(
       initialCapital,
       monthlyDca: normalizedMonthlyDca,
       targetYears: normalizedTargetYears,
+      lookbackYears: normalizedLookbackYears,
+      requireDiversification: Boolean(requireDiversification ?? true),
       allocations,
       expectedReturn,
       volatility,
+      sharpeRatio: Number.isFinite(sharpeRatio) ? Number(sharpeRatio) : undefined,
       riskLevel: normalizeRiskLevel(riskLevel),
       modelName,
       backtestAndMetrics: backtestAndMetrics || undefined,
       riskRewardProfile: riskRewardProfile || undefined,
     });
+
+    revalidatePath('/portfolio');
+    revalidatePath(`/portfolio/${String(portfolio._id)}`);
 
     return {
       success: true,
@@ -470,6 +484,7 @@ export async function getSavedPortfolios(): Promise<{
         riskLevel: normalizeRiskLevel(portfolio.riskLevel),
         volatility: Number(portfolio.volatility || 0),
         expectedReturn: Number(portfolio.expectedReturn || 0),
+        sharpeRatio: Number.isFinite(Number(portfolio.sharpeRatio)) ? Number(portfolio.sharpeRatio) : undefined,
         updatedAt: new Date(portfolio.updatedAt || portfolio.createdAt || Date.now()).toISOString(),
       })),
     };
@@ -590,6 +605,7 @@ export async function getSavedPortfolioById(id: string): Promise<{
         riskLevel: normalizeRiskLevel((portfolio as any).riskLevel),
         volatility: Number((portfolio as any).volatility || 0),
         expectedReturn: Number((portfolio as any).expectedReturn || 0),
+        sharpeRatio: Number.isFinite(Number((portfolio as any).sharpeRatio)) ? Number((portfolio as any).sharpeRatio) : undefined,
         updatedAt: new Date((portfolio as any).updatedAt || (portfolio as any).createdAt || Date.now()).toISOString(),
         allocations:
           (portfolio as any).allocations instanceof Map
@@ -693,6 +709,7 @@ export async function updateSavedPortfolio(
         allocations: input.allocations,
         expectedReturn: Number(input.expectedReturn || 0),
         volatility: Number(input.volatility || 0),
+        sharpeRatio: Number.isFinite(input.sharpeRatio) ? Number(input.sharpeRatio) : undefined,
         initialCapital: Number(input.initialCapital || 0),
         riskLevel: normalizeRiskLevel(input.riskLevel),
         modelName: input.modelName === 'semi' ? 'semi' : 'mvo',

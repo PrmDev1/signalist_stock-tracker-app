@@ -142,6 +142,20 @@
 }
 
 @layer utilities {
+  @keyframes ticker-marquee {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .ticker-marquee {
+    animation: ticker-marquee 28s linear infinite;
+  }
+
   .tv-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(144, 149, 161, 0.6) rgba(48, 51, 58, 0.3);

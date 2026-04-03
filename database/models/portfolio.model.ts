@@ -15,6 +15,7 @@ export interface PortfolioItem extends Document {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   expectedReturn: number;
   volatility: number;
+  sharpeRatio?: number;
   riskLevel: 'low' | 'medium' | 'high';
   modelName?: 'mvo' | 'semi';
   backtestAndMetrics?: BacktestAndMetrics;
@@ -55,6 +56,7 @@ const PortfolioSchema = new Schema<PortfolioItem>(
     },
     expectedReturn: { type: Number, required: true },
     volatility: { type: Number, required: true },
+    sharpeRatio: { type: Number, required: false },
     riskLevel: { type: String, enum: ['low', 'medium', 'high'], required: true },
     modelName: { type: String, enum: ['mvo', 'semi'], required: false },
     backtestAndMetrics: { type: Schema.Types.Mixed, required: false },

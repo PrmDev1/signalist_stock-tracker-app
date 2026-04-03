@@ -56,7 +56,7 @@ declare global {
     };
 
     type SearchCommandProps = {
-        renderAs?: 'button' | 'text';
+        renderAs?: 'button' | 'text' | 'input';
         label?: string;
         initialStocks: StockWithWatchlistStatus[];
     };
@@ -171,7 +171,7 @@ declare global {
     type SearchCommandProps = {
         open?: boolean;
         setOpen?: (open: boolean) => void;
-        renderAs?: 'button' | 'text';
+        renderAs?: 'button' | 'text' | 'input';
         buttonLabel?: string;
         buttonVariant?: 'primary' | 'secondary';
         className?: string;

@@ -46,6 +46,9 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
         : 'text-teal-400';
 
   const allocationEntries = Object.entries(portfolio.allocations || {});
+  const sharpeRatio = Number.isFinite(Number((portfolio as any).sharpeRatio))
+    ? Number((portfolio as any).sharpeRatio)
+    : null;
 
   const metadataByTicker = new Map<
     string,
@@ -140,6 +143,9 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-300">{portfolio.name}</span>
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-400">{holdings.length} สินทรัพย์</span>
             <span className={`rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 ${riskClass}`}>ความเสี่ยง {riskLabel}</span>
+            {sharpeRatio !== null ? (
+              <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-[#9dc4ff]">Sharpe {sharpeRatio.toFixed(2)}</span>
+            ) : null}
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-500">อัปเดต {formattedDate}</span>
           </div>
         </div>

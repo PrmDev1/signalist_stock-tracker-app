@@ -20,6 +20,14 @@ function formatModelName(value: string): string {
   return value.toUpperCase();
 }
 
+function formatRiskLevel(value?: string | null): 'Low' | 'Medium' | 'High' {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === 'low') return 'Low';
+  if (normalized === 'high') return 'High';
+  return 'Medium';
+}
+
 function formatCreatedDate(value?: string | null): string {
   if (!value) return 'Recently added';
 
@@ -48,6 +56,7 @@ function getSharpeTone(sharpeRatio: number): string {
 
 export default function CommunityPortfolioCard({ portfolio, onViewDetails }: CommunityPortfolioCardProps) {
   const topAllocations = normalizeCommunityAllocations(portfolio.allocations).slice(0, 3);
+  const riskLevelLabel = formatRiskLevel(portfolio.riskLv);
 
   return (
     <article className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(125,184,255,0.18),transparent_32%),linear-gradient(180deg,rgba(13,18,31,0.94),rgba(7,10,18,0.94))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#7db8ff]/30 hover:shadow-[0_28px_90px_rgba(8,15,30,0.7)] sm:p-6">
@@ -82,7 +91,9 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Risk Level</p>
-          <p className="mt-2 text-2xl font-semibold text-[#b9d8ff] capitalize">{portfolio.riskLv || 'medium'}</p>
+          <p className="mt-2 max-w-full text-xl font-semibold leading-tight text-[#b9d8ff] sm:text-2xl">
+            {riskLevelLabel}
+          </p>
         </div>
       </div>
 
@@ -148,7 +159,7 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         onClick={() => onViewDetails(portfolio)}
         className="relative mt-6 h-11 w-full rounded-2xl border border-[#7db8ff]/25 bg-gradient-to-r from-[#131e35] via-[#152444] to-[#18294f] text-white shadow-[0_0_24px_rgba(88,98,255,0.18)] transition-all duration-300 hover:scale-[1.01] hover:border-[#7db8ff]/40 hover:shadow-[0_0_34px_rgba(88,98,255,0.28)]"
       >
-        View Details
+        Apply
         <ArrowUpRight className="h-4 w-4" />
       </Button>
     </article>
