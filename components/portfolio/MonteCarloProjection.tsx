@@ -76,6 +76,8 @@ interface MonteCarloProjectionProps {
     amount: number;
     color: string;
   }>;
+  onResultChange?: (result: MonteCarloResult | null) => void;
+  renderUi?: boolean;
 }
 
 type LoadState = 'idle' | 'triggering' | 'processing' | 'completed' | 'error';
@@ -132,6 +134,8 @@ export default function MonteCarloProjection({
   monthlyDca = 0,
   investmentHorizon = 10,
   investedBreakdown = [],
+  onResultChange,
+  renderUi = true,
 }: MonteCarloProjectionProps) {
   const currentCalendarYear = new Date().getFullYear();
   const selectedYears = Math.min(20, Math.max(1, Math.round(investmentHorizon)));
@@ -231,6 +235,10 @@ export default function MonteCarloProjection({
     void runProjection();
   }, [runProjection]);
 
+  useEffect(() => {
+    onResultChange?.(monteCarlo);
+  }, [monteCarlo, onResultChange]);
+
   const chartData = useMemo(() => {
     if (!monteCarlo) return [] as ChartPoint[];
 
@@ -315,16 +323,20 @@ export default function MonteCarloProjection({
   const selectedScenarioLabel =
     selectedScenario === 'expected' ? 'สถานการณ์ที่คาดหวัง' : 'สถานการณ์แย่ที่สุด';
 
+  if (!renderUi) {
+    return null;
+  }
+
   return (
-    <section className="grid grid-cols-1 gap-3 xl:grid-cols-[390px_1fr]">
-      <aside className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-5 xl:min-h-[760px]">
+    <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+      <aside className="min-w-0 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] p-4 xl:self-start">
         <p className="text-[14px] uppercase tracking-[0.16em] text-gray-300">มูลค่าพอร์ตโฟลิโอ</p>
-        <p className="mt-3 max-w-full break-all text-[clamp(2.2rem,7.2vw,3.9rem)] font-bold leading-[0.92] tracking-[-0.02em] text-white">
+        <p className="mt-3 max-w-full break-all text-[clamp(2rem,6vw,3.3rem)] font-bold leading-[0.92] tracking-[-0.02em] text-white">
           {selectedSummary ? formatCurrency(selectedSummary.finalValue) : '--'}
         </p>
 
         {selectedSummary ? (
-          <p className={`mt-2 text-base ${selectedSummary.netProfitOrLoss >= 0 ? 'text-[#00e7c2]' : 'text-[#ff6d6d]'}`}>
+          <p className={`mt-2 text-sm sm:text-base ${selectedSummary.netProfitOrLoss >= 0 ? 'text-[#00e7c2]' : 'text-[#ff6d6d]'}`}>
             {selectedSummary.netProfitOrLoss >= 0 ? '↑' : '↓'}
             <span className="ml-1.5">{formatPercent(Math.abs((selectedSummary.netProfitOrLoss / Math.max(1, selectedSummary.totalInvested)) * 100))} ROIC</span>
             <span className="ml-2.5 text-sm text-gray-400">
@@ -343,7 +355,7 @@ export default function MonteCarloProjection({
           </p>
         ) : null}
 
-        <div className="mt-4 inline-flex rounded-lg border border-[#2b3b54] bg-[#0b111d] p-1.5 text-base">
+        <div className="mt-4 inline-flex rounded-lg border border-[#2b3b54] bg-[#0b111d] p-1.5 text-sm sm:text-base">
           <button
             type="button"
             onClick={() => setSelectedScenario('expected')}
@@ -365,9 +377,9 @@ export default function MonteCarloProjection({
         </div>
 
         {selectedSummary ? (
-          <div className="mt-4 rounded-xl border border-[#1f2a3d] bg-[#0a1019] p-4 text-base">
+          <div className="mt-4 rounded-xl border border-[#1f2a3d] bg-[#0a1019] p-4 text-sm sm:text-base">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xl font-semibold text-gray-100">{selectedScenarioLabel}</p>
+              <p className="text-lg font-semibold text-gray-100">{selectedScenarioLabel}</p>
               <span className="rounded border border-[#2b3b54] px-2 py-1 text-xs text-gray-400">{selectedYears}Y</span>
             </div>
 
@@ -395,7 +407,7 @@ export default function MonteCarloProjection({
         ) : null}
 
         <div className="mt-5">
-          <p className="text-xl text-gray-200">การกระจายการลงทุน</p>
+          <p className="text-lg text-gray-200">การกระจายการลงทุน</p>
           <div className="mt-3 flex h-4 overflow-hidden rounded-sm border border-[#2b3b54]">
             {investedBreakdown.map((item) => (
               <span
@@ -405,9 +417,9 @@ export default function MonteCarloProjection({
             ))}
           </div>
 
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-4 space-y-2">
             {investedBreakdown.map((item) => (
-              <div key={`row-${item.label}`} className="flex items-center justify-between text-lg">
+              <div key={`row-${item.label}`} className="flex items-center justify-between gap-3 text-sm sm:text-base lg:text-lg">
                 <div className="inline-flex items-center gap-2.5">
                   <span className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: item.color }} />
                   <span className="text-gray-300">{item.label}</span>
@@ -420,11 +432,11 @@ export default function MonteCarloProjection({
         </div>
       </aside>
 
-      <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+      <div className="min-w-0 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] p-3 sm:p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">วิเคราะห์พอร์ตโฟลิโอ</p>
-            <h3 className="text-3xl font-semibold text-white sm:text-4xl">คาดการณ์การลงทุน</h3>
+            <h3 className="text-2xl font-semibold text-white sm:text-3xl">คาดการณ์การลงทุน</h3>
             <p className="text-sm text-gray-400">Monte Carlo Simulation ({selectedYears} ปี)</p>
           </div>
 
@@ -432,25 +444,25 @@ export default function MonteCarloProjection({
         </div>
 
       {overviewStats ? (
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
             <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">มูลค่าสุดท้าย (กรณีคาดหวัง)</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{formatCurrency(overviewStats.expectedFinal)}</p>
+            <p className="mt-1 text-xl font-semibold text-white">{formatCurrency(overviewStats.expectedFinal)}</p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
             <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">กำไร/ขาดทุนสุทธิ (คาดหวัง)</p>
-            <p className={`mt-1 text-2xl font-semibold ${overviewStats.expectedProfit >= 0 ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
+            <p className={`mt-1 text-xl font-semibold ${overviewStats.expectedProfit >= 0 ? 'text-[#00e7c2]' : 'text-[#ff5b5b]'}`}>
               {overviewStats.expectedProfit >= 0 ? '+' : '-'}{formatCurrency(Math.abs(overviewStats.expectedProfit))}
             </p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
             <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">มูลค่าสุดท้าย (กรณีแย่สุด)</p>
-            <p className="mt-1 text-2xl font-semibold text-[#ff5b5b]">{formatCurrency(overviewStats.worstFinal)}</p>
+            <p className="mt-1 text-xl font-semibold text-[#ff5b5b]">{formatCurrency(overviewStats.worstFinal)}</p>
           </div>
           <div className="rounded-lg border border-[#1f2a3d] bg-[#070b13] p-3">
             <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">เปรียบเทียบ SPY / BIL</p>
-            <p className="mt-1 text-xl font-semibold text-[#5ea6ff]">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
-            <p className="mt-0.5 text-xl font-semibold text-[#97c9ff]">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
+            <p className="mt-1 text-lg font-semibold text-[#5ea6ff]">SPY: {formatCurrency(overviewStats.spyFinal)}</p>
+            <p className="mt-0.5 text-lg font-semibold text-[#97c9ff]">BIL: {formatCurrency(overviewStats.bilFinal)}</p>
           </div>
         </div>
       ) : null}
@@ -470,7 +482,7 @@ export default function MonteCarloProjection({
         <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
       ) : null}
 
-      <div className="h-[430px] w-full rounded-lg border border-[#1f2a3d] bg-[#02050c] p-2 sm:h-[520px]">
+      <div className="h-[340px] w-full min-w-0 rounded-lg border border-[#1f2a3d] bg-[#02050c] p-2 sm:h-[430px] lg:h-[500px]">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 16 }}>
@@ -541,7 +553,7 @@ export default function MonteCarloProjection({
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-md border border-[#1f2a3d] bg-[#050b16] px-3 py-2">
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-md border border-[#1f2a3d] bg-[#050b16] px-3 py-2">
         <div className="inline-flex items-center gap-2 text-sm font-medium text-[#00e7c2]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#00e7c2]" />
           <span>พอร์ตคาดหวัง</span>

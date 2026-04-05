@@ -27,8 +27,8 @@ const Watchlist = async () => {
   }
 
   return (
-    <section className="w-full px-5 pb-10 pt-6 xl:px-7">
-      <div className="flex flex-col gap-3">
+    <section className="w-full min-w-0 overflow-x-hidden pb-8 pt-2 sm:pb-10 lg:pt-3">
+      <div className="flex min-w-0 flex-col gap-4">
         {hasPartialApiData && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             ข้อมูลบางส่วนอาจไม่อัปเดตชั่วคราวเพราะ API limit

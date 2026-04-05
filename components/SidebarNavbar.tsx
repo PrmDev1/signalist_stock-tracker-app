@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart3,
   BriefcaseBusiness,
+  CandlestickChart,
   ChevronLeft,
   ChevronsLeft,
   LayoutDashboard,
@@ -20,6 +21,7 @@ import { signOut } from '@/lib/actions/auth.actions';
 
 const SIDEBAR_LINKS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/market-summary', label: 'Market Summary', icon: CandlestickChart },
   { href: '/watchlist', label: 'Watchlist', icon: Star },
   { href: '/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
   { href: '/community-portfolio', label: 'Community', icon: BarChart3 },

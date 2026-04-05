@@ -129,8 +129,8 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
 
   return (
     <DashboardLayout>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl border border-[#1f2a3d] bg-[#070b13] px-3 py-2">
+      <div className="min-w-0 space-y-4 overflow-x-hidden">
+        <div className="flex flex-col gap-3 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <Link
             href="/portfolio"
             className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-white"
@@ -138,7 +138,6 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             <ChevronLeft className="h-4 w-4" />
             กลับหน้าพอร์ตโฟลิโอ
           </Link>
-
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-300">{portfolio.name}</span>
             <span className="rounded border border-[#2b3b54] bg-[#0b111d] px-2 py-1 text-gray-400">{holdings.length} สินทรัพย์</span>
@@ -158,11 +157,11 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
           investedBreakdown={investedBreakdown}
         />
 
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_360px]">
-          <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] p-3 sm:p-4">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">สินทรัพย์ในพอร์ตโฟลิโอ</h3>
-              <div className="inline-flex items-center gap-4 text-xs">
+              <div className="inline-flex flex-wrap items-center gap-3 text-xs text-right">
                 <span className="text-gray-400">ผลตอบแทนคาด <span className="ml-1 text-[#00e7c2]">+{expectedReturnPercent.toFixed(2)}%</span></span>
                 <span className="text-gray-400">ความผันผวน <span className="ml-1 text-[#ffbf66]">{volatilityPercent.toFixed(2)}%</span></span>
                 <span className="text-gray-400">เงินทุน <span className="ml-1 text-white">${totalAllocatedAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
@@ -170,7 +169,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left">
+              <table className="w-full min-w-[720px] text-left xl:min-w-0">
                 <thead className="border-b border-[#1f2a3d] text-xs uppercase tracking-wide text-gray-500">
                   <tr>
                     <th className="px-3 py-2.5">หุ้น</th>
@@ -202,7 +201,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#1f2a3d] bg-[#070b13] p-3">
+          <div className="min-w-0 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] p-3 sm:p-4">
             <h3 className="mb-2 text-sm font-semibold text-white">สัดส่วนการลงทุน</h3>
             <PortfolioAllocationChart
               expectedReturns={explainability?.expectedReturns}
@@ -218,7 +217,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_360px]">
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <BacktestChart backtestAndMetrics={portfolio.backtestAndMetrics} />
           <RiskRewardCard profile={portfolio.riskRewardProfile} />
         </div>
