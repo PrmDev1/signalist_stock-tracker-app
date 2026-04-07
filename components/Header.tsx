@@ -11,7 +11,7 @@ const Header = async ({ user }: { user: User }) => {
         <header className="sticky top-0 header border-b border-white/6 bg-[#0b0f19]/85 backdrop-blur-md">
             <div className="container header-wrapper gap-4">
                 <Link href="/">
-                    <Image src="/assets/icons/logo.svg" alt="Signalist logo" width={140} height={32} className="h-8 w-auto cursor-pointer" />
+                    <Image src="/assets/icons/roboadvisor-logo.svg" alt="RoboAdvisor logo" width={180} height={48} className="h-10 w-auto cursor-pointer" />
                 </Link>
                 <Navbar initialStocks={initialStocks} />
 

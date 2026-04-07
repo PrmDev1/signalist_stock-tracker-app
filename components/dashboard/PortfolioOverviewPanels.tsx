@@ -27,7 +27,7 @@ interface ForecastPoint {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('th-TH', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
@@ -110,7 +110,7 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
     <section className="grid min-w-0 gap-4 xl:grid-cols-[410px_minmax(0,1fr)]">
       <article className="min-w-0 rounded-[26px] border border-white/10 bg-[#12131f] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)]">
         <div className="flex items-center gap-2 text-white">
-          <h2 className="text-[1.35rem] font-semibold tracking-[-0.03em]">Total Assets</h2>
+          <h2 className="text-[1.35rem] font-semibold tracking-[-0.03em]">สินทรัพย์รวม</h2>
           <Info className="h-4 w-4 text-gray-500" />
         </div>
 
@@ -125,22 +125,22 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
           ].join(' ')}>
             {formatSignedPercent(expectedProfitPercent)}
           </span>
-          <span className="text-sm text-gray-400">{formatSignedCurrency(expectedProfit)} expected profit</span>
+          <span className="text-sm text-gray-400">คาดว่ากำไร {formatSignedCurrency(expectedProfit)}</span>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-[18px] border border-white/8 bg-white/[0.03] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Final Value</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">มูลค่าปลายทาง</p>
             <p className="mt-2 text-2xl font-semibold text-white">{formatCurrency(finalValue)}</p>
           </div>
           <div className="rounded-[18px] border border-white/8 bg-white/[0.03] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">CAGR Est.</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">CAGR โดยประมาณ</p>
             <p className="mt-2 text-2xl font-semibold text-[#7fd7ff]">{formatPercent(estimatedCagr)}</p>
           </div>
         </div>
 
         <div className="mt-6">
-          <p className="text-xl font-semibold text-white">Distribution</p>
+          <p className="text-xl font-semibold text-white">การกระจายการลงทุน</p>
           <div className="mt-4 flex h-5 overflow-hidden rounded-full border border-white/10 bg-[#171925] p-1">
             {portfolio.investedBreakdown.map((item) => (
               <span
@@ -170,7 +170,7 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
 
       <article className="min-w-0 rounded-[26px] border border-white/10 bg-[#12131f] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)]">
         <div className="flex items-center gap-2 text-white">
-          <h2 className="text-[1.35rem] font-semibold tracking-[-0.03em]">Investment Forecast</h2>
+          <h2 className="text-[1.35rem] font-semibold tracking-[-0.03em]">คาดการณ์การลงทุน</h2>
           <Info className="h-4 w-4 text-gray-500" />
         </div>
 
@@ -187,8 +187,8 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
           </span>
           <span className="text-gray-400">
             {forecastSummary
-              ? `${formatSignedCurrency(expectedProfit)} expected profit from Monte Carlo`
-              : 'Waiting for Monte Carlo forecast'}
+              ? `คาดว่ากำไร ${formatSignedCurrency(expectedProfit)} จากการจำลอง Monte Carlo`
+              : 'กำลังรอผลคาดการณ์จาก Monte Carlo'}
           </span>
         </div>
 
@@ -229,9 +229,9 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
                   labelFormatter={(value) => {
                     const maxStep = forecastData[forecastData.length - 1]?.step ?? 1;
                     const yearOffset = (Number(value) / Math.max(1, maxStep)) * Math.max(1, portfolio.investmentHorizon);
-                    return `Forecast ${Math.round(new Date().getFullYear() + yearOffset)}`;
+                    return `คาดการณ์ปี ${Math.round(new Date().getFullYear() + yearOffset)}`;
                   }}
-                  formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Expected Portfolio']}
+                  formatter={(value) => [formatCurrency(Number(value ?? 0)), 'พอร์ตคาดการณ์']}
                   contentStyle={{
                     backgroundColor: '#1d2030',
                     border: '1px solid #313652',
@@ -252,7 +252,7 @@ export default function PortfolioOverviewPanels({ portfolio, monteCarloResult }:
             </ResponsiveContainer>
           ) : (
             <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-white/10 bg-white/[0.02] text-sm text-gray-500">
-              Waiting for Monte Carlo forecast
+              กำลังรอผลคาดการณ์จาก Monte Carlo
             </div>
           )}
         </div>

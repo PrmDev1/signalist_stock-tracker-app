@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import CommunityPortfolioApplyPage from '@/components/portfolio/community/CommunityPortfolioApplyPage';
 
 export const metadata: Metadata = {
-  title: 'Apply Community Portfolio | Stocks Portfolio',
-  description: 'Configure and save a community-built portfolio into your private workspace.',
+  title: 'ตั้งค่าพอร์ตชุมชน | Stocks Portfolio',
+  description: 'กำหนดค่าและบันทึกพอร์ตจากชุมชนเข้าสู่พื้นที่ทำงานส่วนตัวของคุณ',
 };
 
 interface CommunityPortfolioApplyRoutePageProps {

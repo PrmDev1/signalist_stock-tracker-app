@@ -4,10 +4,12 @@ import SearchCommand from '@/components/SearchCommand';
 import { getWatchlistWithData } from '@/lib/actions/watchlist.actions';
 import WatchlistAlertsDashboard from '@/components/watchlist/WatchlistAlertsDashboard';
 
+type WatchlistItem = Awaited<ReturnType<typeof getWatchlistWithData>>[number];
+
 const Watchlist = async () => {
   const watchlist = await getWatchlistWithData();
   const initialStocks = await searchStocks();
-  const hasPartialApiData = watchlist.some((item: any) => item?.priceFormatted === '—');
+  const hasPartialApiData = watchlist.some((item: WatchlistItem) => item?.priceFormatted === '—');
   const cooldownRemainingSeconds = await getFinnhubCooldownRemainingSeconds();
 
   // Empty state
@@ -16,9 +18,9 @@ const Watchlist = async () => {
       <section className="flex watchlist-empty-container">
         <div className="watchlist-empty">
           <Star className="watchlist-star" />
-          <h2 className="empty-title">Your watchlist is empty</h2>
+          <h2 className="empty-title">ยังไม่มีหุ้นในรายการเฝ้าดู</h2>
           <p className="empty-description">
-            Start building your watchlist by searching for stocks and clicking the star icon to add them.
+            เริ่มสร้างรายการเฝ้าดูของคุณได้โดยค้นหาหุ้นที่สนใจ แล้วกดไอคอนดาวเพื่อเพิ่มเข้าไป
           </p>
         </div>
         <SearchCommand initialStocks={initialStocks} />
@@ -31,13 +33,13 @@ const Watchlist = async () => {
       <div className="flex min-w-0 flex-col gap-4">
         {hasPartialApiData && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            ข้อมูลบางส่วนอาจไม่อัปเดตชั่วคราวเพราะ API limit
-            {cooldownRemainingSeconds > 0 && ` (ลองใหม่อีก ${cooldownRemainingSeconds}s)`}
+            ข้อมูลบางส่วนอาจอัปเดตล่าช้าชั่วคราว เนื่องจากข้อจำกัดการเรียกใช้งาน API
+            {cooldownRemainingSeconds > 0 && ` (ลองอีกครั้งใน ${cooldownRemainingSeconds} วินาที)`}
           </div>
         )}
         <WatchlistAlertsDashboard
           initialStocks={initialStocks}
-          rows={watchlist.map((item) => ({
+          rows={watchlist.map((item: WatchlistItem) => ({
             ticker: item.symbol,
             company: item.company,
             currentPrice: Number(item.currentPrice || 0),

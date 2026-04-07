@@ -44,7 +44,7 @@ interface AlertsTableInteractionProps {
 
 const getConditionText = (alert: AlertRule) => {
 	const operator = alert.condition === 'LESS' ? '<' : '>';
-	return `Price ${operator} $${alert.triggerPrice.toFixed(2)}`;
+	return `ราคา ${operator} $${alert.triggerPrice.toFixed(2)}`;
 };
 
 export default function AlertsTableInteraction({
@@ -88,13 +88,13 @@ export default function AlertsTableInteraction({
 				<TableHeader>
 					<TableRow className="h-12 border-b border-gray-600 bg-gradient-to-r from-[#232733] to-[#1A1D24] hover:bg-gradient-to-r hover:from-[#232733] hover:to-[#1A1D24]">
 						<TableHead className="w-10 pl-2" />
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Company</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Symbol</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Price</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Change</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Market Cap</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">P/E Ratio</TableHead>
-						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">Alert</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">บริษัท</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">ตัวย่อ</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">ราคา</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">การเปลี่ยนแปลง</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">มูลค่าตลาด</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">P/E</TableHead>
+						<TableHead className="px-3 text-[14px] font-medium text-[#d1d6df]">การแจ้งเตือน</TableHead>
 					</TableRow>
 				</TableHeader>
 
@@ -137,10 +137,10 @@ export default function AlertsTableInteraction({
 													event.stopPropagation();
 												}}
 												className="inline-flex h-9 w-[116px] items-center justify-center gap-1.5 rounded-[6px] border border-yellow-500/25 bg-[#1c1910] px-2.5 text-[15px] font-semibold text-yellow-500 transition hover:border-yellow-500/40 hover:bg-[#292115]"
-												aria-label={`View alerts for ${row.ticker}`}
+												aria-label={`ดูการแจ้งเตือนของ ${row.ticker}`}
 											>
 												<Bell className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-												Active
+												ใช้งานอยู่
 											</button>
 										</PopoverTrigger>
 
@@ -151,7 +151,7 @@ export default function AlertsTableInteraction({
 										>
 											<PopoverHeader>
 												<PopoverTitle className="text-sm font-semibold text-gray-100">
-													{row.ticker} Alerts
+													การแจ้งเตือน {row.ticker}
 												</PopoverTitle>
 											</PopoverHeader>
 
@@ -160,7 +160,7 @@ export default function AlertsTableInteraction({
 													<div key={alert.id} className="rounded-md border border-gray-600 bg-gray-700/40 px-3 py-2">
 														<div className="flex items-center justify-between gap-2">
 															<div>
-																<p className="text-xs text-gray-500">{alert.alertType}</p>
+																<p className="text-xs text-gray-500">{alert.alertType === 'Price' ? 'ราคา' : alert.alertType}</p>
 																<p className="text-sm font-semibold text-gray-100">{getConditionText(alert)}</p>
 															</div>
 															<div className="flex items-center gap-1">
@@ -172,7 +172,7 @@ export default function AlertsTableInteraction({
 																		event.stopPropagation();
 																		onEditAlert(row, alert);
 																	}}
-																	aria-label={`Edit alert ${alert.id}`}
+																	aria-label={`แก้ไขการแจ้งเตือน ${alert.id}`}
 																>
 																	<Pencil className="h-3.5 w-3.5" />
 																</button>
@@ -184,7 +184,7 @@ export default function AlertsTableInteraction({
 																		event.stopPropagation();
 																		onDeleteAlert(row.ticker, alert.id);
 																	}}
-																	aria-label={`Delete alert ${alert.id}`}
+																	aria-label={`ลบการแจ้งเตือน ${alert.id}`}
 																>
 																	<Trash2 className="h-3.5 w-3.5" />
 																</button>
@@ -204,10 +204,10 @@ export default function AlertsTableInteraction({
 											onCreateAlert(row);
 										}}
 										className="inline-flex h-9 w-[116px] items-center justify-center gap-1.5 rounded-[6px] border border-[#704731]/45 bg-[#3f281a] px-2.5 text-[14px] font-medium text-[#ed9850] transition hover:border-[#926040] hover:bg-[#4f3020]"
-										aria-label={`Create alert for ${row.ticker}`}
+										aria-label={`สร้างการแจ้งเตือนสำหรับ ${row.ticker}`}
 									>
 										<Bell className="h-4 w-4" />
-										Add Alert
+										ตั้งการแจ้งเตือน
 									</button>
 								)}
 							</TableCell>

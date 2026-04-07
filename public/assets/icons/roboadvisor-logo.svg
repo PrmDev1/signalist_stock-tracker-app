@@ -1,0 +1,14 @@
+<svg width="360" height="120" viewBox="0 0 360 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="360" height="120" rx="24" fill="transparent"/>
+  <g transform="translate(12 12)">
+    <rect x="0" y="0" width="96" height="96" rx="20" fill="#0B1020" stroke="#29324A" stroke-width="2"/>
+    <path d="M20 30L48 8L76 30V66L48 88L20 66V30Z" fill="#F8FAFC"/>
+    <path d="M48 16L68 34V44L48 26L28 44V34L48 16Z" fill="#0B1020"/>
+    <path d="M31 58H46V73H31V58Z" fill="#0B1020"/>
+    <path d="M50 51L70 31H58V23H84V49H76V37L56 57L50 51Z" fill="#0B1020"/>
+  </g>
+  <g fill="#F8FAFC">
+    <text x="128" y="58" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="0.5">Robo</text>
+    <text x="128" y="94" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="400" letter-spacing="7">advisor</text>
+  </g>
+</svg>

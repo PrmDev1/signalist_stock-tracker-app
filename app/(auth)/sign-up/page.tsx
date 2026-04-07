@@ -37,48 +37,48 @@ const SignUp = () => {
             if(result.success) router.push('/');
         } catch (e) {
             console.error(e);
-            toast.error('Sign up failed', {
-                description: e instanceof Error ? e.message : 'Failed to create an account.'
+            toast.error('สมัครสมาชิกไม่สำเร็จ', {
+                description: e instanceof Error ? e.message : 'ไม่สามารถสร้างบัญชีได้'
             })
         }
     }
 
     return (
         <>
-            <h1 className="form-title">Sign Up & Personalize</h1>
+            <h1 className="form-title">สมัครสมาชิกและตั้งค่าการลงทุน</h1>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 <InputField
                     name="fullName"
-                    label="Full Name"
-                    placeholder="John Doe"
+                    label="ชื่อ - นามสกุล"
+                    placeholder="สมชาย ใจดี"
                     register={register}
                     error={errors.fullName}
-                    validation={{ required: 'Full name is required', minLength: 2 }}
+                    validation={{ required: 'กรุณากรอกชื่อ - นามสกุล', minLength: { value: 2, message: 'กรุณากรอกชื่อให้ครบถ้วน' } }}
                 />
 
                 <InputField
                     name="email"
-                    label="Email"
-                    placeholder="contact@jsmastery.com"
+                    label="อีเมล"
+                    placeholder="name@example.com"
                     register={register}
                     error={errors.email}
-                    validation={{ required: 'Email name is required', pattern: /^\w+@\w+\.\w+$/, message: 'Email address is required' }}
+                    validation={{ required: 'กรุณากรอกอีเมล', pattern: /^\w+@\w+\.\w+$/, message: 'กรุณากรอกอีเมลให้ถูกต้อง' }}
                 />
 
                 <InputField
                     name="password"
-                    label="Password"
-                    placeholder="Enter a strong password"
+                    label="รหัสผ่าน"
+                    placeholder="ตั้งรหัสผ่านที่ปลอดภัย"
                     type="password"
                     register={register}
                     error={errors.password}
-                    validation={{ required: 'Password is required', minLength: 8 }}
+                    validation={{ required: 'กรุณากรอกรหัสผ่าน', minLength: { value: 8, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' } }}
                 />
 
                 <CountrySelectField
                     name="country"
-                    label="Country"
+                    label="ประเทศ"
                     control={control}
                     error={errors.country}
                     required
@@ -86,8 +86,8 @@ const SignUp = () => {
 
                 <SelectField
                     name="investmentGoals"
-                    label="Investment Goals"
-                    placeholder="Select your investment goal"
+                    label="เป้าหมายการลงทุน"
+                    placeholder="เลือกเป้าหมายการลงทุน"
                     options={INVESTMENT_GOALS}
                     control={control}
                     error={errors.investmentGoals}
@@ -96,8 +96,8 @@ const SignUp = () => {
 
                 <SelectField
                     name="riskTolerance"
-                    label="Risk Tolerance"
-                    placeholder="Select your risk level"
+                    label="ระดับความเสี่ยงที่ยอมรับได้"
+                    placeholder="เลือกระดับความเสี่ยง"
                     options={RISK_TOLERANCE_OPTIONS}
                     control={control}
                     error={errors.riskTolerance}
@@ -106,8 +106,8 @@ const SignUp = () => {
 
                 <SelectField
                     name="preferredIndustry"
-                    label="Preferred Industry"
-                    placeholder="Select your preferred industry"
+                    label="อุตสาหกรรมที่สนใจ"
+                    placeholder="เลือกอุตสาหกรรมที่สนใจ"
                     options={PREFERRED_INDUSTRIES}
                     control={control}
                     error={errors.preferredIndustry}
@@ -115,10 +115,10 @@ const SignUp = () => {
                 />
 
                 <Button type="submit" disabled={isSubmitting} className="yellow-btn w-full mt-5">
-                    {isSubmitting ? 'Creating Account' : 'Start Your Investing Journey'}
+                    {isSubmitting ? 'กำลังสร้างบัญชี...' : 'เริ่มต้นเส้นทางการลงทุน'}
                 </Button>
 
-                <FooterLink text="Already have an account?" linkText="Sign in" href="/sign-in" />
+                <FooterLink text="มีบัญชีอยู่แล้วใช่ไหม?" linkText="เข้าสู่ระบบ" href="/sign-in" />
             </form>
         </>
     )

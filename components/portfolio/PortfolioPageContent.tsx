@@ -21,10 +21,10 @@ export default function PortfolioPageContent({ portfolios }: PortfolioPageConten
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white">
-            My Portfolio
+            พอร์ตลงทุนของฉัน
           </h1>
           <p className="text-lg text-gray-400 mt-2">
-            Track & optimize your investments
+            ติดตามและปรับพอร์ตการลงทุนได้ในที่เดียว
           </p>
         </div>
 
@@ -32,10 +32,10 @@ export default function PortfolioPageContent({ portfolios }: PortfolioPageConten
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-105 sm:w-auto sm:px-5 sm:py-2.5 sm:gap-2"
-          title="Create New Portfolio"
+          title="สร้างพอร์ตใหม่"
         >
           <Plus size={22} />
-          <span className="hidden sm:inline font-semibold">Create Portfolio</span>
+          <span className="hidden sm:inline font-semibold">สร้างพอร์ต</span>
         </button>
       </div>
 
@@ -50,6 +50,9 @@ export default function PortfolioPageContent({ portfolios }: PortfolioPageConten
               {...portfolio}
               onEditSave={(updatedPortfolio) => {
                 setPortfolioItems((current) => current.map((item) => item.id === updatedPortfolio.id ? { ...item, ...updatedPortfolio } : item));
+              }}
+              onDelete={(deletedPortfolioId) => {
+                setPortfolioItems((current) => current.filter((item) => item.id !== deletedPortfolioId));
               }}
             />
           ))}

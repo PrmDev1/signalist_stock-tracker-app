@@ -1,32 +1,32 @@
 export const NAV_ITEMS = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/market-summary', label: 'Market Summary' },
-    { href: '/search', label: 'Search' },
-    { href: '/watchlist', label: 'Watchlist' },
-    { href: '/portfolio', label: 'Portfolio' },
-    { href: '/community-portfolio', label: 'Community Portfolio' },
+    { href: '/', label: 'แดชบอร์ด' },
+    { href: '/market-summary', label: 'ภาพรวมตลาด' },
+    { href: '/search', label: 'ค้นหาหุ้น' },
+    { href: '/watchlist', label: 'รายการเฝ้าดู' },
+    { href: '/portfolio', label: 'พอร์ตลงทุน' },
+    { href: '/community-portfolio', label: 'พอร์ตชุมชน' },
 ];
 
 // Sign-up form select options
 export const INVESTMENT_GOALS = [
-    { value: 'Growth', label: 'Growth' },
-    { value: 'Income', label: 'Income' },
-    { value: 'Balanced', label: 'Balanced' },
-    { value: 'Conservative', label: 'Conservative' },
+    { value: 'Growth', label: 'เน้นการเติบโต' },
+    { value: 'Income', label: 'เน้นรายได้' },
+    { value: 'Balanced', label: 'สมดุล' },
+    { value: 'Conservative', label: 'ระมัดระวัง' },
 ];
 
 export const RISK_TOLERANCE_OPTIONS = [
-    { value: 'Low', label: 'Low' },
-    { value: 'Medium', label: 'Medium' },
-    { value: 'High', label: 'High' },
+    { value: 'Low', label: 'ต่ำ' },
+    { value: 'Medium', label: 'ปานกลาง' },
+    { value: 'High', label: 'สูง' },
 ];
 
 export const PREFERRED_INDUSTRIES = [
-    { value: 'Technology', label: 'Technology' },
-    { value: 'Healthcare', label: 'Healthcare' },
-    { value: 'Finance', label: 'Finance' },
-    { value: 'Energy', label: 'Energy' },
-    { value: 'Consumer Goods', label: 'Consumer Goods' },
+    { value: 'Technology', label: 'เทคโนโลยี' },
+    { value: 'Healthcare', label: 'การแพทย์และสุขภาพ' },
+    { value: 'Finance', label: 'การเงิน' },
+    { value: 'Energy', label: 'พลังงาน' },
+    { value: 'Consumer Goods', label: 'สินค้าอุปโภคบริโภค' },
 ];
 
 export const ALERT_TYPE_OPTIONS = [
@@ -43,7 +43,7 @@ export const CONDITION_OPTIONS = [
 export const MARKET_OVERVIEW_WIDGET_CONFIG = {
     colorTheme: 'dark', // dark mode
     dateRange: '12M', // last 12 months
-    locale: 'en', // language
+    locale: 'th_TH', // language
     largeChartUrl: '', // link to a large chart if needed
     isTransparent: true, // makes background transparent
     showFloatingTooltip: true, // show tooltip on hover
@@ -104,7 +104,7 @@ export const HEATMAP_WIDGET_CONFIG = {
     blockColor: 'change',
     grouping: 'sector',
     isTransparent: true,
-    locale: 'en',
+    locale: 'th_TH',
     symbolUrl: '',
     colorTheme: 'dark',
     exchanges: [],
@@ -122,17 +122,17 @@ export const TOP_STORIES_WIDGET_CONFIG = {
     feedMode: 'market',
     colorTheme: 'dark',
     isTransparent: true,
-    locale: 'en',
+    locale: 'th_TH',
     market: 'stock',
     width: '100%',
     height: '600',
 };
 
 export const MARKET_DATA_WIDGET_CONFIG = {
-    title: 'Stocks',
+    title: 'หุ้น',
     width: '100%',
     height: 600,
-    locale: 'en',
+    locale: 'th_TH',
     showSymbolLogo: true,
     colorTheme: 'dark',
     isTransparent: false,
@@ -181,7 +181,7 @@ export const ADVANCED_CHART_WIDGET_CONFIG = {
   timezone: "Etc/UTC",
   theme: "dark",
   style: "1",
-  locale: "en",
+    locale: "th_TH",
 
   hide_top_toolbar: true,
   hide_side_toolbar: true,
@@ -200,7 +200,7 @@ export const SYMBOL_INFO_WIDGET_CONFIG = (symbol: string) => ({
     symbol: symbol.toUpperCase(),
     colorTheme: 'dark',
     isTransparent: true,
-    locale: 'en',
+    locale: 'th_TH',
     width: '100%',
     height: 170,
 });
@@ -215,7 +215,7 @@ export const CANDLE_CHART_WIDGET_CONFIG = (symbol: string) => ({
     hide_volume: false,
     hotlist: false,
     interval: 'D',
-    locale: 'en',
+    locale: 'th_TH',
     save_image: false,
     style: 1,
     symbol: symbol.toUpperCase(),
@@ -241,7 +241,7 @@ export const BASELINE_WIDGET_CONFIG = (symbol: string) => ({
     hide_volume: false,
     hotlist: false,
     interval: 'D',
-    locale: 'en',
+    locale: 'th_TH',
     save_image: false,
     style: 10,
     symbol: symbol.toUpperCase(),

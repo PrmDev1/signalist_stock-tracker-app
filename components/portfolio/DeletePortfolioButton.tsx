@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { deleteSavedPortfolio } from '@/lib/actions/cloudflare.actions';
 import {
@@ -17,10 +16,10 @@ import {
 interface DeletePortfolioButtonProps {
   id: string;
   name: string;
+  onDelete?: (id: string) => void;
 }
 
-export default function DeletePortfolioButton({ id, name }: DeletePortfolioButtonProps) {
-  const router = useRouter();
+export default function DeletePortfolioButton({ id, name, onDelete }: DeletePortfolioButtonProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -29,13 +28,13 @@ export default function DeletePortfolioButton({ id, name }: DeletePortfolioButto
       const response = await deleteSavedPortfolio(id);
 
       if (!response.success) {
-        toast.error(response.error || 'Failed to delete portfolio');
+        toast.error(response.error || 'ไม่สามารถลบพอร์ตได้');
         return;
       }
 
-      toast.success('Portfolio deleted');
+      toast.success('ลบพอร์ตแล้ว');
       setOpen(false);
-      router.refresh();
+      onDelete?.(id);
     });
   };
 
@@ -43,8 +42,8 @@ export default function DeletePortfolioButton({ id, name }: DeletePortfolioButto
     <>
       <button
         type="button"
-        aria-label={`Delete portfolio ${name}`}
-        title={`Delete ${name}`}
+        aria-label={`ลบพอร์ต ${name}`}
+        title={`ลบ ${name}`}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -58,9 +57,9 @@ export default function DeletePortfolioButton({ id, name }: DeletePortfolioButto
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-gray-800 border-gray-600 text-gray-200 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Portfolio</DialogTitle>
+            <DialogTitle className="text-white">ลบพอร์ตลงทุน</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Are you sure you want to delete “{name}”? This action cannot be undone.
+              คุณแน่ใจหรือไม่ว่าต้องการลบ “{name}” การดำเนินการนี้ไม่สามารถย้อนกลับได้
             </DialogDescription>
           </DialogHeader>
 
@@ -70,7 +69,7 @@ export default function DeletePortfolioButton({ id, name }: DeletePortfolioButto
               onClick={() => setOpen(false)}
               className="h-10 px-4 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              ยกเลิก
             </button>
             <button
               type="button"
@@ -78,7 +77,7 @@ export default function DeletePortfolioButton({ id, name }: DeletePortfolioButto
               onClick={handleDelete}
               className="h-10 px-4 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 disabled:opacity-60 transition-colors"
             >
-              {isPending ? 'Deleting...' : 'Delete'}
+              {isPending ? 'กำลังลบ...' : 'ลบพอร์ต'}
             </button>
           </DialogFooter>
         </DialogContent>

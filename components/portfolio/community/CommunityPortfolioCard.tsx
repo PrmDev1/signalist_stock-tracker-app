@@ -20,21 +20,21 @@ function formatModelName(value: string): string {
   return value.toUpperCase();
 }
 
-function formatRiskLevel(value?: string | null): 'Low' | 'Medium' | 'High' {
+function formatRiskLevel(value?: string | null): string {
   const normalized = value?.trim().toLowerCase();
 
-  if (normalized === 'low') return 'Low';
-  if (normalized === 'high') return 'High';
-  return 'Medium';
+  if (normalized === 'low') return 'ต่ำ';
+  if (normalized === 'high') return 'สูง';
+  return 'ปานกลาง';
 }
 
 function formatCreatedDate(value?: string | null): string {
-  if (!value) return 'Recently added';
+  if (!value) return 'เพิ่มล่าสุด';
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Recently added';
+  if (Number.isNaN(parsed.getTime())) return 'เพิ่มล่าสุด';
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('th-TH', {
     day: 'numeric',
     month: 'short',
     timeZone: 'UTC',
@@ -68,9 +68,9 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
             <Sparkles className="h-3.5 w-3.5" />
             {formatModelName(portfolio.modelName)}
           </div>
-          <h3 className="mt-4 text-xl font-semibold text-white">{portfolio.mvoId.slice(0, 8).toUpperCase()} Strategy</h3>
+          <h3 className="mt-4 text-xl font-semibold text-white">กลยุทธ์ {portfolio.mvoId.slice(0, 8).toUpperCase()}</h3>
           <p className="mt-2 text-sm leading-6 text-gray-400">
-            Community-built allocation blueprint ranked for efficient risk-adjusted performance.
+            พอร์ตต้นแบบจากชุมชนที่จัดอันดับตามสมดุลระหว่างผลตอบแทนและความเสี่ยง
           </p>
         </div>
 
@@ -82,15 +82,15 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
 
       <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Expected Return</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">ผลตอบแทนคาดหวัง</p>
           <p className="mt-2 text-2xl font-semibold text-emerald-300">{formatPercent(portfolio.expectedReturn)}</p>
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Volatility</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">ความผันผวน</p>
           <p className="mt-2 text-2xl font-semibold text-rose-300">{formatPercent(portfolio.volatility)}</p>
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Risk Level</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">ระดับความเสี่ยง</p>
           <p className="mt-2 max-w-full text-xl font-semibold leading-tight text-[#b9d8ff] sm:text-2xl">
             {riskLevelLabel}
           </p>
@@ -101,11 +101,11 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
             <Layers3 className="h-4 w-4 text-[#7db8ff]" />
-            Allocation Snapshot
+            ภาพรวมสัดส่วนลงทุน
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Gauge className="h-3.5 w-3.5 text-[#0fedbe]" />
-            Top weighted holdings
+            หุ้นน้ำหนักสูงสุด
           </div>
         </div>
 
@@ -143,11 +143,11 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
             <span className="h-2 w-2 rounded-full bg-[#7db8ff]" />
-            {portfolio.lookbackYears}Y lookback
+            ย้อนหลัง {portfolio.lookbackYears} ปี
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
             <ShieldCheck className={`h-4 w-4 ${portfolio.isDiversified ? 'text-[#0fedbe]' : 'text-gray-500'}`} />
-            {portfolio.isDiversified ? 'Diversified' : 'Concentrated'}
+            {portfolio.isDiversified ? 'กระจายการลงทุน' : 'กระจุกตัว'}
           </span>
         </div>
 
@@ -159,7 +159,7 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         onClick={() => onViewDetails(portfolio)}
         className="relative mt-6 h-11 w-full rounded-2xl border border-[#7db8ff]/25 bg-gradient-to-r from-[#131e35] via-[#152444] to-[#18294f] text-white shadow-[0_0_24px_rgba(88,98,255,0.18)] transition-all duration-300 hover:scale-[1.01] hover:border-[#7db8ff]/40 hover:shadow-[0_0_34px_rgba(88,98,255,0.28)]"
       >
-        Apply
+        ดูรายละเอียด
         <ArrowUpRight className="h-4 w-4" />
       </Button>
     </article>

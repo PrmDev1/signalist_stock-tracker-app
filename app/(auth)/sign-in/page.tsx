@@ -29,41 +29,41 @@ const SignIn = () => {
             if(result.success) router.push('/');
         } catch (e) {
             console.error(e);
-            toast.error('Sign in failed', {
-                description: e instanceof Error ? e.message : 'Failed to sign in.'
+            toast.error('เข้าสู่ระบบไม่สำเร็จ', {
+                description: e instanceof Error ? e.message : 'ไม่สามารถเข้าสู่ระบบได้'
             })
         }
     }
 
     return (
         <>
-            <h1 className="form-title">Welcome back</h1>
+            <h1 className="form-title">ยินดีต้อนรับกลับ</h1>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 <InputField
                     name="email"
-                    label="Email"
-                    placeholder="contact@jsmastery.com"
+                    label="อีเมล"
+                    placeholder="name@example.com"
                     register={register}
                     error={errors.email}
-                    validation={{ required: 'Email is required', pattern: /^\w+@\w+\.\w+$/ }}
+                    validation={{ required: 'กรุณากรอกอีเมล', pattern: /^\w+@\w+\.\w+$/ }}
                 />
 
                 <InputField
                     name="password"
-                    label="Password"
-                    placeholder="Enter your password"
+                    label="รหัสผ่าน"
+                    placeholder="กรอกรหัสผ่านของคุณ"
                     type="password"
                     register={register}
                     error={errors.password}
-                    validation={{ required: 'Password is required', minLength: 8 }}
+                    validation={{ required: 'กรุณากรอกรหัสผ่าน', minLength: { value: 8, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' } }}
                 />
 
                 <Button type="submit" disabled={isSubmitting} className="yellow-btn w-full mt-5">
-                    {isSubmitting ? 'Signing In' : 'Sign In'}
+                    {isSubmitting ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
                 </Button>
 
-                <FooterLink text="Don't have an account?" linkText="Create an account" href="/sign-up" />
+                <FooterLink text="ยังไม่มีบัญชีใช่ไหม?" linkText="สมัครสมาชิก" href="/sign-up" />
             </form>
         </>
     );

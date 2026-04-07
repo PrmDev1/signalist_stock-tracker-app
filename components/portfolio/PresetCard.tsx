@@ -49,11 +49,11 @@ export default function PresetCard({
 
       {isAvailable ? (
         <div className="relative mt-6 inline-flex items-center gap-2 text-sm font-medium text-emerald-300">
-          <span>Start with this preset</span>
+          <span>เริ่มด้วยรูปแบบนี้</span>
           <span className="transition-transform duration-300 group-hover:translate-x-1">{'->'}</span>
         </div>
       ) : (
-        <div className="relative mt-6 text-sm text-gray-500">Available once preset API is enabled</div>
+        <div className="relative mt-6 text-sm text-gray-500">จะพร้อมใช้งานเมื่อเปิดใช้ Preset API</div>
       )}
     </div>
   );

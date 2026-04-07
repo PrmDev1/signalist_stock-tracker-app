@@ -21,10 +21,10 @@ interface PortfolioFiltersProps {
 }
 
 const RISK_SEGMENTS: Array<{ value: 'all' | CommunityRiskLevel; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: 'all', label: 'ทั้งหมด' },
+  { value: 'low', label: 'ต่ำ' },
+  { value: 'medium', label: 'ปานกลาง' },
+  { value: 'high', label: 'สูง' },
 ];
 
 export default function PortfolioFilters({ value, loading, onChange, onApply, onReset }: PortfolioFiltersProps) {
@@ -42,11 +42,11 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-[#7db8ff]/20 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b9d8ff]">
             <Sparkles className="h-3.5 w-3.5" />
-            Filter Engine
+            ตัวกรองการค้นหา
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-white">Shape the discovery feed</h2>
+          <h2 className="mt-4 text-xl font-semibold text-white">ปรับการค้นหาให้ตรงกับที่ต้องการ</h2>
           <p className="mt-2 text-sm leading-6 text-gray-400">
-            Tune return, risk, model logic, and diversification before querying the community dataset.
+            กำหนดผลตอบแทน ความเสี่ยง โมเดล และการกระจายการลงทุนก่อนค้นหาพอร์ตจากชุมชน
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -59,16 +59,16 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">Return Range</p>
-              <p className="text-xs text-gray-500">Enter percentage values like 10 to 50. These are sent to the backend as-is.</p>
+              <p className="text-xs text-gray-500">ใส่ค่าเป็นเปอร์เซ็นต์ เช่น 10 ถึง 50 ระบบจะส่งค่าตามที่กรอกไปประมวลผล</p>
             </div>
             <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-emerald-200">
-              Performance
+              ผลตอบแทน
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
               inputMode="decimal"
-              placeholder="Min %"
+              placeholder="ต่ำสุด %"
               value={value.minReturn}
               onChange={(event) => updateValue('minReturn', event.target.value)}
               disabled={loading}
@@ -76,7 +76,7 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
             />
             <Input
               inputMode="decimal"
-              placeholder="Max %"
+              placeholder="สูงสุด %"
               value={value.maxReturn}
               onChange={(event) => updateValue('maxReturn', event.target.value)}
               disabled={loading}
@@ -89,16 +89,16 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">Risk Range</p>
-              <p className="text-xs text-gray-500">Filter by volatility, also entered as percentages.</p>
+              <p className="text-xs text-gray-500">กรองตามความผันผวน โดยกรอกเป็นเปอร์เซ็นต์เช่นกัน</p>
             </div>
             <span className="rounded-full border border-rose-400/20 bg-rose-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-rose-200">
-              Volatility
+              ความผันผวน
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
               inputMode="decimal"
-              placeholder="Min %"
+              placeholder="ต่ำสุด %"
               value={value.minRisk}
               onChange={(event) => updateValue('minRisk', event.target.value)}
               disabled={loading}
@@ -106,7 +106,7 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
             />
             <Input
               inputMode="decimal"
-              placeholder="Max %"
+              placeholder="สูงสุด %"
               value={value.maxRisk}
               onChange={(event) => updateValue('maxRisk', event.target.value)}
               disabled={loading}
@@ -118,8 +118,8 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
         <section className="rounded-[24px] border border-white/8 bg-white/5 p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">Risk Level</p>
-              <p className="text-xs text-gray-500">Segment the community feed by investor profile.</p>
+              <p className="text-sm font-medium text-white">ระดับความเสี่ยง</p>
+              <p className="text-xs text-gray-500">คัดกรองพอร์ตตามระดับความเสี่ยงที่เหมาะกับผู้ลงทุน</p>
             </div>
           </div>
 
@@ -149,13 +149,13 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
 
         <section className="grid grid-cols-1 gap-4 rounded-[24px] border border-white/8 bg-white/5 p-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-white">Model Type</label>
+            <label className="mb-2 block text-sm font-medium text-white">ประเภทโมเดล</label>
             <Select value={value.modelName} onValueChange={(next) => updateValue('modelName', next as CommunityPortfolioFilterDraft['modelName'])}>
               <SelectTrigger className="h-11 w-full rounded-2xl border-white/10 bg-black/20 text-white">
-                <SelectValue placeholder="All models" />
+                <SelectValue placeholder="ทุกโมเดล" />
               </SelectTrigger>
               <SelectContent className="border-white/10 bg-[#0f1321] text-white">
-                <SelectItem value="all">All models</SelectItem>
+                <SelectItem value="all">ทุกโมเดล</SelectItem>
                 <SelectItem value="mvo">MVO</SelectItem>
                 <SelectItem value="semi">Semi-Variance</SelectItem>
               </SelectContent>
@@ -163,14 +163,14 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-white">Diversification</label>
+            <label className="mb-2 block text-sm font-medium text-white">การกระจายการลงทุน</label>
             <button
               type="button"
               onClick={() => updateValue('isDiversified', value.isDiversified === 'yes' ? 'no' : value.isDiversified === 'no' ? 'all' : 'yes')}
               disabled={loading}
               className="flex h-11 w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 text-sm text-gray-300 transition-all duration-300 hover:border-[#0fedbe]/35 hover:text-white"
             >
-              <span>{value.isDiversified === 'all' ? 'All portfolios' : value.isDiversified === 'yes' ? 'Diversified only' : 'Concentrated only'}</span>
+              <span>{value.isDiversified === 'all' ? 'ทุกพอร์ต' : value.isDiversified === 'yes' ? 'เฉพาะพอร์ตที่กระจายการลงทุน' : 'เฉพาะพอร์ตที่เน้นกระจุกตัว'}</span>
               <span
                 className={[
                   'relative inline-flex h-6 w-11 items-center rounded-full border transition-all duration-300',
@@ -198,7 +198,7 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
           disabled={loading}
           className="h-11 rounded-2xl bg-gradient-to-r from-[#5862ff] via-[#7db8ff] to-[#0fedbe] text-[#030712] shadow-[0_0_30px_rgba(88,98,255,0.3)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_0_38px_rgba(88,98,255,0.42)]"
         >
-          Apply Filters
+          ใช้ตัวกรอง
         </Button>
 
         <Button
@@ -209,7 +209,7 @@ export default function PortfolioFilters({ value, loading, onChange, onApply, on
           className="h-11 rounded-2xl border-white/10 bg-white/5 text-gray-200 transition-all duration-300 hover:bg-white/8"
         >
           <RotateCcw className="h-4 w-4" />
-          Reset
+          ล้างค่า
         </Button>
       </div>
     </aside>

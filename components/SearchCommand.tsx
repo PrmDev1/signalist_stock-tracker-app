@@ -16,7 +16,7 @@ import WatchlistButton from './WatchlistButton';
 
 export default function SearchCommand({
   renderAs = 'button',
-  label = 'Add stock',
+  label = 'เพิ่มหุ้น',
   initialStocks,
 }: SearchCommandProps) {
   const [open, setOpen] = useState(false);
@@ -112,9 +112,9 @@ export default function SearchCommand({
             readOnly
             value=""
             onFocus={() => setOpen(true)}
-            placeholder="Search for stocks..."
+            placeholder="ค้นหาหุ้นที่ต้องการ..."
             className="pointer-events-none h-full w-full bg-transparent text-[15px] text-white placeholder:text-[#7c839a] focus:outline-none"
-            aria-label="Search for stocks"
+            aria-label="ค้นหาหุ้น"
           />
           <div className="hidden shrink-0 items-center rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-gray-400 sm:inline-flex">
             Ctrl/Cmd + K
@@ -134,7 +134,7 @@ export default function SearchCommand({
           <CommandInput
             value={searchTerm}
             onValueChange={setSearchTerm}
-            placeholder='Search stocks...'
+            placeholder='ค้นหาหุ้น...'
             className='search-input'
           />
           {loading && <Loader2 className='search-loader' />}
@@ -142,16 +142,16 @@ export default function SearchCommand({
         <CommandList className='search-list'>
           {loading ? (
             <CommandEmpty className='search-list-empty'>
-              Loading stocks...
+              กำลังโหลดข้อมูลหุ้น...
             </CommandEmpty>
           ) : displayStocks?.length === 0 ? (
             <div className='search-list-indicator'>
-              {isSearchMode ? 'No results found' : 'No stocks available'}
+              {isSearchMode ? 'ไม่พบผลลัพธ์' : 'ยังไม่มีข้อมูลหุ้น'}
             </div>
           ) : (
             <ul>
               <div className='search-count'>
-                {isSearchMode ? 'Search results' : 'Popular stocks'}
+                {isSearchMode ? 'ผลการค้นหา' : 'หุ้นยอดนิยม'}
                 {` `}({displayStocks?.length || 0})
               </div>
               {displayStocks?.map((stock, i) => (

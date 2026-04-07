@@ -67,7 +67,7 @@ function formatPercent(value: number): string {
 }
 
 function formatCurrency(value?: number): string {
-  if (!Number.isFinite(value)) return 'N/A';
+  if (!Number.isFinite(value)) return 'ไม่มีข้อมูล';
 
   return new Intl.NumberFormat('en-US', {
     currency: 'USD',
@@ -80,13 +80,21 @@ function formatModel(value: string): string {
   return value.toLowerCase() === 'semi' ? 'Semi-Variance' : value.toUpperCase();
 }
 
+function formatRiskLabel(value?: string): string {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === 'low') return 'ความเสี่ยงต่ำ';
+  if (normalized === 'high') return 'ความเสี่ยงสูง';
+  return 'ความเสี่ยงปานกลาง';
+}
+
 function formatCreatedDate(value?: string | null): string {
-  if (!value) return 'N/A';
+  if (!value) return 'ไม่มีข้อมูล';
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'N/A';
+  if (Number.isNaN(parsed.getTime())) return 'ไม่มีข้อมูล';
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('th-TH', {
     day: 'numeric',
     month: 'short',
     timeZone: 'UTC',
@@ -191,7 +199,7 @@ function LoadingCard() {
 function InlineRefreshState() {
   return (
     <div className="rounded-[24px] border border-[#7db8ff]/20 bg-[#7db8ff]/8 px-4 py-3 text-sm text-[#d9e9ff] shadow-[0_0_24px_rgba(125,184,255,0.12)]">
-      Refreshing ranked community portfolios...
+      กำลังรีเฟรชรายการพอร์ตชุมชน...
     </div>
   );
 }
@@ -286,8 +294,8 @@ export default function CommunityPortfolioPage() {
               ? (payload as { error?: string }).error
               : payload && typeof payload === 'object' && 'detail' in payload
                 ? (payload as { detail?: string }).detail
-                : 'Unable to load community portfolios.';
-          throw new Error(nextError || 'Unable to load community portfolios.');
+                    : 'ไม่สามารถโหลดพอร์ตชุมชนได้';
+                  throw new Error(nextError || 'ไม่สามารถโหลดพอร์ตชุมชนได้');
         }
 
         const nextItems = isCommunityPortfolioResponse(payload) ? payload.data : [];
@@ -298,7 +306,7 @@ export default function CommunityPortfolioPage() {
       } catch (fetchError) {
         if (controller.signal.aborted) return;
 
-        const nextMessage = fetchError instanceof Error ? fetchError.message : 'Unable to load community portfolios.';
+        const nextMessage = fetchError instanceof Error ? fetchError.message : 'ไม่สามารถโหลดพอร์ตชุมชนได้';
         if (items.length === 0) {
           setItems([]);
           setTotalCount(null);
@@ -323,13 +331,13 @@ export default function CommunityPortfolioPage() {
   const activeSummary = useMemo(() => {
     const parts: string[] = [];
 
-    if (appliedQuery.riskLevel) parts.push(appliedQuery.riskLevel);
+    if (appliedQuery.riskLevel) parts.push(formatRiskLabel(appliedQuery.riskLevel));
     if (appliedQuery.modelName) parts.push(formatModel(appliedQuery.modelName));
     if (typeof appliedQuery.isDiversified === 'boolean') {
-      parts.push(appliedQuery.isDiversified ? 'Diversified' : 'Concentrated');
+      parts.push(appliedQuery.isDiversified ? 'กระจายการลงทุน' : 'กระจุกตัว');
     }
 
-    return parts.length > 0 ? parts : ['All community portfolios'];
+    return parts.length > 0 ? parts : ['พอร์ตชุมชนทั้งหมด'];
   }, [appliedQuery]);
 
   const selectedTopAllocations: CommunityAllocationEntry[] = selectedPortfolio
@@ -342,7 +350,7 @@ export default function CommunityPortfolioPage() {
   useEffect(() => {
     if (!selectedPortfolio) return;
 
-    setPortfolioName(`${selectedPortfolio.mvoId.slice(0, 8).toUpperCase()} Strategy`);
+    setPortfolioName(`พอร์ต ${selectedPortfolio.mvoId.slice(0, 8).toUpperCase()}`);
     setInvestmentAmount('10000');
     setMonthlyDca('0');
     setDetailStep(1);
@@ -393,17 +401,17 @@ export default function CommunityPortfolioPage() {
     const normalizedMonthlyDca = Number(monthlyDca);
 
     if (!normalizedName) {
-      toast.error('Please enter a portfolio name.');
+      toast.error('กรุณากรอกชื่อพอร์ต');
       return;
     }
 
     if (!Number.isFinite(normalizedInitialCapital) || normalizedInitialCapital <= 0) {
-      toast.error('Investment amount must be greater than 0.');
+      toast.error('จำนวนเงินลงทุนต้องมากกว่า 0');
       return;
     }
 
     if (!Number.isFinite(normalizedMonthlyDca) || normalizedMonthlyDca < 0) {
-      toast.error('Monthly DCA must be 0 or greater.');
+      toast.error('เงิน DCA รายเดือนต้องไม่น้อยกว่า 0');
       return;
     }
 
@@ -422,17 +430,17 @@ export default function CommunityPortfolioPage() {
       const payload = (await response.json().catch(() => ({}))) as PortfolioPreviewResponse & { error?: string; detail?: string };
 
       if (!response.ok) {
-        throw new Error(payload.error || payload.detail || payload.message || 'Unable to prepare a portfolio preview.');
+        throw new Error(payload.error || payload.detail || payload.message || 'ไม่สามารถเตรียมตัวอย่างพอร์ตได้');
       }
 
       if (!payload.portfolio || !payload.portfolio.allocations || Object.keys(payload.portfolio.allocations).length < 2) {
-        throw new Error('Preview data is incomplete. Please try another community strategy or adjust your investment amount.');
+        throw new Error('ข้อมูลตัวอย่างพอร์ตไม่สมบูรณ์ กรุณาลองเลือกพอร์ตอื่นหรือปรับจำนวนเงินลงทุน');
       }
 
       setPreviewData(payload);
       setDetailStep(2);
     } catch (previewIssue) {
-      const message = previewIssue instanceof Error ? previewIssue.message : 'Unable to prepare portfolio preview.';
+      const message = previewIssue instanceof Error ? previewIssue.message : 'ไม่สามารถเตรียมตัวอย่างพอร์ตได้';
       setPreviewError(message);
       toast.error(message);
     } finally {
@@ -449,22 +457,22 @@ export default function CommunityPortfolioPage() {
     const targetYears = Math.min(20, Math.max(1, Number(selectedPortfolio.lookbackYears || 10)));
 
     if (!normalizedName) {
-      toast.error('Please enter a portfolio name.');
+      toast.error('กรุณากรอกชื่อพอร์ต');
       return;
     }
 
     if (!Number.isFinite(normalizedInitialCapital) || normalizedInitialCapital <= 0) {
-      toast.error('Investment amount must be greater than 0.');
+      toast.error('จำนวนเงินลงทุนต้องมากกว่า 0');
       return;
     }
 
     if (!Number.isFinite(normalizedMonthlyDca) || normalizedMonthlyDca < 0) {
-      toast.error('Monthly DCA must be 0 or greater.');
+      toast.error('เงิน DCA รายเดือนต้องไม่น้อยกว่า 0');
       return;
     }
 
     if (!previewData?.portfolio || Object.keys(previewData.portfolio.allocations || {}).length < 2) {
-      toast.error('Please generate the final portfolio preview before saving.');
+      toast.error('กรุณาสร้างตัวอย่างพอร์ตขั้นสุดท้ายก่อนบันทึก');
       return;
     }
 
@@ -521,22 +529,22 @@ export default function CommunityPortfolioPage() {
       const simulatePayload = (await simulateResponse.json().catch(() => ({}))) as { error?: string; message?: string };
 
       if (!saveResponse.success || !saveResponse.portfolioId) {
-        throw new Error(saveResponse.error || 'Unable to create portfolio from this community strategy.');
+        throw new Error(saveResponse.error || 'ไม่สามารถสร้างพอร์ตจากกลยุทธ์ชุมชนนี้ได้');
       }
 
       if (!simulateResponse.ok) {
         toast.warning(
           simulatePayload.error ||
             simulatePayload.message ||
-            'Portfolio saved, but Monte Carlo warm-up could not be started. The detail page will retry automatically.'
+            'บันทึกพอร์ตแล้ว แต่ยังไม่สามารถเริ่ม Monte Carlo ได้ ระบบจะลองใหม่ให้อัตโนมัติในหน้ารายละเอียด'
         );
       }
 
-      toast.success('Portfolio created and added to your workspace.');
+          toast.success('สร้างพอร์ตและเพิ่มเข้าพื้นที่ทำงานของคุณแล้ว');
       setSelectedPortfolio(null);
       router.push(`/portfolio/${saveResponse.portfolioId}`);
     } catch (creationError) {
-      const message = creationError instanceof Error ? creationError.message : 'Unable to create portfolio.';
+      const message = creationError instanceof Error ? creationError.message : 'ไม่สามารถสร้างพอร์ตได้';
       toast.error(message);
     } finally {
       setIsCreatingPortfolio(false);
@@ -552,14 +560,13 @@ export default function CommunityPortfolioPage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#7db8ff]/25 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b9d8ff]">
               <Sparkles className="h-3.5 w-3.5" />
-              Community Portfolio
+              พอร์ตชุมชน
             </div>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Discover community-built portfolios tuned for real-world market conditions.
+              ค้นหาพอร์ตจากชุมชนที่ออกแบบให้เหมาะกับสภาวะตลาดจริง
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-gray-400">
-              Explore beginner-friendly portfolio blueprints, filter them by return and volatility, and inspect the
-              strongest risk-adjusted ideas before you commit capital.
+              เลือกดูพอร์ตต้นแบบที่เข้าใจง่าย กรองตามผลตอบแทนและความผันผวน แล้วเปรียบเทียบแนวคิดที่สมดุลความเสี่ยงได้ดีก่อนตัดสินใจลงทุน
             </p>
           </div>
 
@@ -568,21 +575,21 @@ export default function CommunityPortfolioPage() {
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Universe</p>
               <p className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
                 <Bot className="h-5 w-5 text-[#7db8ff]" />
-                Ranked presets
+                พอร์ตต้นแบบที่จัดอันดับแล้ว
               </p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Filters</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ตัวกรอง</p>
               <p className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
                 <Shield className="h-5 w-5 text-[#0fedbe]" />
-                Apply-only
+                ปรับแล้วใช้งานได้ทันที
               </p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Sorting</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">การจัดเรียง</p>
               <p className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
                 <BarChart3 className="h-5 w-5 text-[#fdd458]" />
-                Sharpe-first
+                เรียงตาม Sharpe Ratio
               </p>
             </div>
           </div>
@@ -601,7 +608,7 @@ export default function CommunityPortfolioPage() {
         <div className="space-y-6">
           <div className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,16,27,0.92),rgba(8,11,18,0.92))] p-5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Active discovery state</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">สถานะการค้นหาปัจจุบัน</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {activeSummary.map((item) => (
                   <span
@@ -616,9 +623,9 @@ export default function CommunityPortfolioPage() {
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 text-right">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Page status</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">สถานะหน้า</p>
               <p className="mt-2 text-lg font-semibold text-white">
-                Page {page} · {loading ? 'Loading' : `${items.length} shown`}
+                หน้า {page} · {loading ? 'กำลังโหลด' : `แสดง ${items.length} รายการ`}
               </p>
             </div>
           </div>
@@ -629,7 +636,7 @@ export default function CommunityPortfolioPage() {
             <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-4 text-amber-100 shadow-[0_0_32px_rgba(245,158,11,0.08)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-base font-semibold">Showing cached on-screen results</h2>
+                  <h2 className="text-base font-semibold">กำลังแสดงข้อมูลที่โหลดไว้ล่าสุด</h2>
                   <p className="mt-1 text-sm text-amber-100/80">{error}</p>
                 </div>
                 <Button
@@ -637,7 +644,7 @@ export default function CommunityPortfolioPage() {
                   onClick={handleApply}
                   className="rounded-2xl bg-white/10 text-white hover:bg-white/15"
                 >
-                  Try again
+                  ลองอีกครั้ง
                 </Button>
               </div>
             </div>
@@ -645,14 +652,14 @@ export default function CommunityPortfolioPage() {
 
           {error && items.length === 0 ? (
             <div className="rounded-[28px] border border-rose-400/20 bg-rose-400/10 p-6 text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.08)]">
-              <h2 className="text-lg font-semibold">Unable to load community portfolios</h2>
+              <h2 className="text-lg font-semibold">ไม่สามารถโหลดพอร์ตชุมชนได้</h2>
               <p className="mt-2 text-sm text-rose-100/80">{error}</p>
               <Button
                 type="button"
                 onClick={handleApply}
                 className="mt-4 rounded-2xl bg-white/10 text-white hover:bg-white/15"
               >
-                Retry
+                โหลดใหม่
               </Button>
             </div>
           ) : null}
@@ -670,10 +677,9 @@ export default function CommunityPortfolioPage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5">
                 <Sparkles className="h-7 w-7 text-[#7db8ff]" />
               </div>
-              <h2 className="mt-5 text-2xl font-semibold text-white">No portfolios match this filter set</h2>
+              <h2 className="mt-5 text-2xl font-semibold text-white">ไม่พบพอร์ตที่ตรงกับตัวกรองนี้</h2>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-400">
-                Expand the return or risk ranges, clear the model filter, or remove diversification constraints to
-                surface more community strategies.
+                ลองขยายช่วงผลตอบแทนหรือความเสี่ยง เปลี่ยนโมเดล หรือยกเลิกเงื่อนไขการกระจายการลงทุนเพื่อดูพอร์ตเพิ่มเติม
               </p>
             </div>
           ) : null}
@@ -692,11 +698,11 @@ export default function CommunityPortfolioPage() {
 
           <div className="flex flex-col gap-3 rounded-[28px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
-              <p className="text-sm font-medium text-white">Pagination</p>
+              <p className="text-sm font-medium text-white">การแบ่งหน้า</p>
               <p className="mt-1 text-sm text-gray-400">
                 {totalPages > 0
-                  ? `Browse ${totalCount} community portfolios across ${totalPages} pages.`
-                  : `Move through the ranked feed in fixed batches of ${PAGE_SIZE} portfolios. Next stays available while the current page is full.`}
+                  ? `มีพอร์ตชุมชนทั้งหมด ${totalCount} รายการ แบ่งเป็น ${totalPages} หน้า`
+                  : `แสดงพอร์ตทีละ ${PAGE_SIZE} รายการ และสามารถไปหน้าถัดไปได้เมื่อหน้าปัจจุบันเต็ม`}
               </p>
             </div>
 
@@ -709,7 +715,7 @@ export default function CommunityPortfolioPage() {
                 className="rounded-2xl border-white/10 bg-black/20 text-white hover:bg-white/8"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Previous
+                ก่อนหน้า
               </Button>
               <Button
                 type="button"
@@ -717,7 +723,7 @@ export default function CommunityPortfolioPage() {
                 onClick={() => handlePageChange(page + 1)}
                 className="rounded-2xl bg-gradient-to-r from-[#5862ff] to-[#0fedbe] text-[#030712] shadow-[0_0_30px_rgba(88,98,255,0.28)] hover:scale-[1.01]"
               >
-                Next
+                ถัดไป
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -740,13 +746,13 @@ export default function CommunityPortfolioPage() {
               <div className="shrink-0 border-b border-white/10 p-6 sm:p-8">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#7db8ff]/25 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b9d8ff]">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Community Portfolio Detail
+                  รายละเอียดพอร์ตชุมชน
                 </div>
                 <h2 className="mt-4 text-3xl font-semibold text-white">
-                  {selectedPortfolio.mvoId.slice(0, 8).toUpperCase()} Strategy
+                  กลยุทธ์ {selectedPortfolio.mvoId.slice(0, 8).toUpperCase()}
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
-                  Step {detailStep} of 2. Review the community strategy, enter your portfolio parameters, then confirm the final generated portfolio before saving it into your private workspace.
+                  ขั้นตอนที่ {detailStep} จาก 2 ตรวจสอบกลยุทธ์จากชุมชน กรอกข้อมูลพอร์ตของคุณ และยืนยันพอร์ตสุดท้ายก่อนบันทึกเข้าพื้นที่ทำงานส่วนตัว
                 </p>
               </div>
 
@@ -755,13 +761,13 @@ export default function CommunityPortfolioPage() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Expected Return</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ผลตอบแทนคาดหวัง</p>
                         <p className="mt-2 text-2xl font-semibold text-emerald-300">
                           {formatPercent(selectedPortfolio.expectedReturn)}
                         </p>
                       </div>
                       <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Volatility</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ความผันผวน</p>
                         <p className="mt-2 text-2xl font-semibold text-rose-300">
                           {formatPercent(selectedPortfolio.volatility)}
                         </p>
@@ -775,7 +781,7 @@ export default function CommunityPortfolioPage() {
                     </div>
 
                     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                      <p className="text-sm font-medium text-white">Top allocation map</p>
+                      <p className="text-sm font-medium text-white">สัดส่วนการลงทุนหลัก</p>
                       <div className="mt-4 space-y-3">
                         {(detailStep === 2 && previewData?.portfolio
                           ? Object.entries(previewData.portfolio.allocations)
@@ -803,9 +809,9 @@ export default function CommunityPortfolioPage() {
 
                     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-white">Portfolio details</p>
+                        <p className="text-sm font-medium text-white">รายละเอียดพอร์ต</p>
                         <p className="text-xs uppercase tracking-[0.18em] text-gray-500">
-                          {(detailStep === 2 && previewData?.portfolio ? Object.keys(previewData.portfolio.allocations).length : selectedAllocations.length)} ranked holdings
+                          {(detailStep === 2 && previewData?.portfolio ? Object.keys(previewData.portfolio.allocations).length : selectedAllocations.length)} หุ้นที่จัดอันดับไว้
                         </p>
                       </div>
 
@@ -814,8 +820,8 @@ export default function CommunityPortfolioPage() {
                           <thead className="bg-white/5 text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
                             <tr>
                               <th className="px-4 py-3 font-medium">Ticker</th>
-                              <th className="px-4 py-3 text-right font-medium">Weight</th>
-                              <th className="px-4 py-3 text-right font-medium">Allocated</th>
+                              <th className="px-4 py-3 text-right font-medium">สัดส่วน</th>
+                              <th className="px-4 py-3 text-right font-medium">มูลค่าที่จัดสรร</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -846,26 +852,26 @@ export default function CommunityPortfolioPage() {
 
                   <div className="space-y-4">
                     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                      <p className="text-sm font-medium text-white">Portfolio metadata</p>
+                      <p className="text-sm font-medium text-white">ข้อมูลพอร์ต</p>
                       <dl className="mt-4 space-y-3 text-sm text-gray-300">
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-gray-500">Model</dt>
+                          <dt className="text-gray-500">โมเดล</dt>
                           <dd>{formatModel(selectedPortfolio.modelName)}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-gray-500">Risk level</dt>
-                          <dd className="capitalize">{selectedPortfolio.riskLv}</dd>
+                          <dt className="text-gray-500">ระดับความเสี่ยง</dt>
+                          <dd>{formatRiskLabel(selectedPortfolio.riskLv)}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-gray-500">Lookback</dt>
-                          <dd>{selectedPortfolio.lookbackYears} years</dd>
+                          <dt className="text-gray-500">ช่วงข้อมูลย้อนหลัง</dt>
+                          <dd>{selectedPortfolio.lookbackYears} ปี</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-gray-500">Diversification</dt>
-                          <dd>{selectedPortfolio.isDiversified ? 'Diversified' : 'Concentrated'}</dd>
+                          <dt className="text-gray-500">การกระจายการลงทุน</dt>
+                          <dd>{selectedPortfolio.isDiversified ? 'กระจายการลงทุน' : 'กระจุกตัว'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-gray-500">Created</dt>
+                          <dt className="text-gray-500">วันที่สร้าง</dt>
                           <dd>{formatCreatedDate(selectedPortfolio.createAt)}</dd>
                         </div>
                       </dl>
@@ -877,11 +883,11 @@ export default function CommunityPortfolioPage() {
                           <PiggyBank className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{detailStep === 1 ? 'Step 1: Portfolio setup' : 'Step 2: Final portfolio review'}</p>
+                          <p className="text-sm font-medium text-white">{detailStep === 1 ? 'ขั้นตอนที่ 1: ตั้งค่าพอร์ต' : 'ขั้นตอนที่ 2: ตรวจสอบพอร์ตสุดท้าย'}</p>
                           <p className="mt-2 text-sm leading-6 text-gray-300">
                             {detailStep === 1
-                              ? 'Enter the parameters needed to build your portfolio from this community strategy. Once ready, generate a complete preview with accurate allocations and backtest metrics.'
-                              : 'Review the final generated portfolio, including Sharpe Ratio and backtest metrics, before saving it into your personal portfolio workspace.'}
+                              ? 'กรอกข้อมูลที่ใช้สร้างพอร์ตจากกลยุทธ์ชุมชนนี้ เมื่อพร้อมแล้วให้สร้างตัวอย่างพอร์ตเพื่อดูสัดส่วนและผลทดสอบย้อนหลัง'
+                              : 'ตรวจสอบพอร์ตสุดท้าย รวมถึง Sharpe Ratio และผลทดสอบย้อนหลัง ก่อนบันทึกเข้าพื้นที่พอร์ตส่วนตัวของคุณ'}
                           </p>
                         </div>
                       </div>
@@ -890,13 +896,13 @@ export default function CommunityPortfolioPage() {
                         <div className="mt-5 space-y-4">
                           <div>
                             <label htmlFor="community-portfolio-name" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
-                              Portfolio name
+                              ชื่อพอร์ต
                             </label>
                             <Input
                               id="community-portfolio-name"
                               value={portfolioName}
                               onChange={(event) => setPortfolioName(event.target.value)}
-                              placeholder="My Community Portfolio"
+                              placeholder="พอร์ตชุมชนของฉัน"
                               disabled={isPreparingPreview || isCreatingPortfolio}
                               className="h-11 rounded-2xl border-white/10 bg-black/20 text-white placeholder:text-gray-500"
                             />
@@ -906,7 +912,7 @@ export default function CommunityPortfolioPage() {
                             <div>
                               <label htmlFor="community-investment-amount" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
                                 <DollarSign className="h-3.5 w-3.5 text-[#0fedbe]" />
-                                Investment amount
+                                จำนวนเงินลงทุน
                               </label>
                               <Input
                                 id="community-investment-amount"
@@ -924,7 +930,7 @@ export default function CommunityPortfolioPage() {
                             <div>
                               <label htmlFor="community-monthly-dca" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
                                 <PiggyBank className="h-3.5 w-3.5 text-[#7db8ff]" />
-                                Monthly DCA
+                                DCA รายเดือน
                               </label>
                               <Input
                                 id="community-monthly-dca"
@@ -942,13 +948,13 @@ export default function CommunityPortfolioPage() {
 
                           <div className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
                             <div className="flex items-center justify-between gap-3">
-                              <span>Projection setup</span>
+                              <span>การตั้งค่าจำลองผลลัพธ์</span>
                               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
-                                {Math.min(20, Math.max(1, Number(selectedPortfolio.lookbackYears || 10)))} year horizon
+                                ระยะเวลา {Math.min(20, Math.max(1, Number(selectedPortfolio.lookbackYears || 10)))} ปี
                               </span>
                             </div>
                             <p className="mt-2 text-xs leading-5 text-gray-400">
-                              We use your investment amount to request the final portfolio allocation and backtest preview, then use your DCA plan when triggering Monte Carlo for the saved portfolio.
+                              ระบบจะใช้จำนวนเงินลงทุนของคุณเพื่อคำนวณสัดส่วนพอร์ตและตัวอย่างผลทดสอบย้อนหลัง จากนั้นจะใช้แผน DCA ของคุณเมื่อเริ่ม Monte Carlo หลังบันทึกพอร์ต
                             </p>
                           </div>
 
@@ -967,10 +973,10 @@ export default function CommunityPortfolioPage() {
                             {isPreparingPreview ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Preparing final portfolio...
+                                กำลังเตรียมพอร์ตสุดท้าย...
                               </>
                             ) : (
-                              'Continue to final portfolio review'
+                              'ไปยังการตรวจสอบพอร์ตสุดท้าย'
                             )}
                           </Button>
                         </div>
@@ -988,50 +994,50 @@ export default function CommunityPortfolioPage() {
                               <p className="mt-2 text-2xl font-semibold text-emerald-300">
                                 {typeof previewData?.backtestAndMetrics?.realizedMetrics?.realizedAnnualReturnPct === 'number'
                                   ? `${previewData.backtestAndMetrics.realizedMetrics.realizedAnnualReturnPct.toFixed(1)}%`
-                                  : 'N/A'}
+                                  : 'ไม่มีข้อมูล'}
                               </p>
                             </div>
                           </div>
 
                           <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-medium text-white">Final portfolio review</p>
+                              <p className="text-sm font-medium text-white">ตรวจสอบพอร์ตสุดท้าย</p>
                               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
                                 <TrendingUp className="h-3.5 w-3.5 text-[#0fedbe]" />
-                                Ready to save
+                                พร้อมบันทึก
                               </span>
                             </div>
                             <dl className="mt-4 space-y-3 text-sm text-gray-300">
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Portfolio name</dt>
+                                <dt className="text-gray-500">ชื่อพอร์ต</dt>
                                 <dd>{portfolioName}</dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Initial investment</dt>
+                                <dt className="text-gray-500">เงินลงทุนเริ่มต้น</dt>
                                 <dd>{formatCurrency(Number(investmentAmount))}</dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Monthly DCA</dt>
+                                <dt className="text-gray-500">DCA รายเดือน</dt>
                                 <dd>{formatCurrency(Number(monthlyDca))}</dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Expected annual return</dt>
+                                <dt className="text-gray-500">ผลตอบแทนคาดหวังต่อปี</dt>
                                 <dd className="text-emerald-300">
-                                  {previewData?.portfolio ? formatPercent(previewData.portfolio.expectedReturn) : 'N/A'}
+                                  {previewData?.portfolio ? formatPercent(previewData.portfolio.expectedReturn) : 'ไม่มีข้อมูล'}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Expected volatility</dt>
+                                <dt className="text-gray-500">ความผันผวนคาดหวัง</dt>
                                 <dd className="text-rose-300">
-                                  {previewData?.portfolio ? formatPercent(previewData.portfolio.volatility) : 'N/A'}
+                                  {previewData?.portfolio ? formatPercent(previewData.portfolio.volatility) : 'ไม่มีข้อมูล'}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-gray-500">Historical max drawdown</dt>
+                                <dt className="text-gray-500">Max Drawdown ย้อนหลัง</dt>
                                 <dd>
                                   {typeof previewData?.backtestAndMetrics?.realizedMetrics?.historicalMaxDrawdownPct === 'number'
                                     ? `${previewData.backtestAndMetrics.realizedMetrics.historicalMaxDrawdownPct.toFixed(1)}%`
-                                    : 'N/A'}
+                                    : 'ไม่มีข้อมูล'}
                                 </dd>
                               </div>
                             </dl>
@@ -1045,7 +1051,7 @@ export default function CommunityPortfolioPage() {
                               disabled={isCreatingPortfolio}
                               className="h-11 flex-1 rounded-2xl border-white/10 bg-black/20 text-white hover:bg-white/8"
                             >
-                              Back to setup
+                              กลับไปตั้งค่า
                             </Button>
                             <Button
                               type="button"
@@ -1056,10 +1062,10 @@ export default function CommunityPortfolioPage() {
                               {isCreatingPortfolio ? (
                                 <>
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Saving portfolio...
+                                  กำลังบันทึกพอร์ต...
                                 </>
                               ) : (
-                                'Save portfolio to my workspace'
+                                'บันทึกพอร์ตไปยังพื้นที่ทำงานของฉัน'
                               )}
                             </Button>
                           </div>
@@ -1068,17 +1074,16 @@ export default function CommunityPortfolioPage() {
                     </div>
 
                     <div className="rounded-[28px] border border-[#7db8ff]/20 bg-[#7db8ff]/8 p-5">
-                      <p className="text-sm font-medium text-white">What this means</p>
+                      <p className="text-sm font-medium text-white">สรุปความหมาย</p>
                       <p className="mt-3 text-sm leading-6 text-gray-300">
-                        This community portfolio is already optimized and ranked. Use it as a benchmark for your own
-                        portfolio construction or as inspiration for further AI optimization in your private workspace.
+                        พอร์ตชุมชนนี้ผ่านการปรับแต่งและจัดอันดับมาแล้ว คุณสามารถใช้เป็นแนวทางเปรียบเทียบสำหรับสร้างพอร์ตของตัวเอง หรือใช้ต่อยอดกับการปรับพอร์ตด้วย AI ในพื้นที่ทำงานส่วนตัว
                       </p>
                       <Button
                         type="button"
                         onClick={() => setSelectedPortfolio(null)}
                         className="mt-5 h-11 w-full rounded-2xl bg-gradient-to-r from-[#5862ff] to-[#0fedbe] text-[#030712] shadow-[0_0_28px_rgba(88,98,255,0.28)] hover:scale-[1.01]"
                       >
-                        Back to discovery grid
+                        กลับไปหน้าค้นหาพอร์ต
                       </Button>
                     </div>
                   </div>

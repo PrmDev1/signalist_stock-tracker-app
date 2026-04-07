@@ -27,6 +27,7 @@ export interface PortfolioCardProps {
 
 interface PortfolioCardComponentProps extends PortfolioCardProps {
   onEditSave: (portfolio: PortfolioCardProps & { updatedAt: string }) => void;
+  onDelete: (portfolioId: string) => void;
 }
 
 type EditedPortfolioPayload = PortfolioCardProps & {
@@ -52,9 +53,10 @@ export default function PortfolioCard({
   expectedReturn,
   updatedAt,
   onEditSave,
+  onDelete,
 }: PortfolioCardComponentProps) {
   const normalizedRiskLevel = riskLevel.toLowerCase();
-  const riskLabel = `${normalizedRiskLevel.charAt(0).toUpperCase()}${normalizedRiskLevel.slice(1)}`;
+  const riskLabel = normalizedRiskLevel === 'high' ? 'ความเสี่ยงสูง' : normalizedRiskLevel === 'medium' ? 'ความเสี่ยงปานกลาง' : 'ความเสี่ยงต่ำ';
   const assets = tickers.length;
   const riskScore = volatility * 100;
   const expectedReturnPercent = expectedReturn * 100;
@@ -90,14 +92,14 @@ export default function PortfolioCard({
     <article className="group relative block min-h-[280px] rounded-2xl border border-gray-700 bg-gradient-to-r from-gray-800 to-[#1c1c1c] px-5 py-5 shadow-lg transition-all duration-200 hover:border-gray-600 hover:shadow-[0_0_32px_rgba(88,98,255,0.10)]">
       <Link
         href={`/portfolio/${id}`}
-        aria-label={`Open portfolio ${name}`}
+        aria-label={`เปิดพอร์ต ${name}`}
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
       />
 
       <div className="relative z-20 flex items-start justify-between">
         <div>
           <h3 className="text-2xl font-bold text-white leading-tight">{name}</h3>
-          <p className="mt-1 text-lg text-gray-300 leading-none">{assets} assets</p>
+          <p className="mt-1 text-lg text-gray-300 leading-none">{assets} สินทรัพย์</p>
         </div>
 
         <div className="relative z-20 flex items-center gap-2">
@@ -118,19 +120,19 @@ export default function PortfolioCard({
 
       <div className="my-5 border-t border-gray-700" />
 
-      <h4 className="text-2xl font-semibold text-gray-300 leading-tight">Status Portfolio</h4>
+      <h4 className="text-2xl font-semibold text-gray-300 leading-tight">สถานะพอร์ต</h4>
 
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <AlertCircle className={`h-5 w-5 ${riskClass}`} />
-            <span className="text-xl text-gray-200 leading-none">{riskLabel} risk</span>
+            <span className="text-xl text-gray-200 leading-none">{riskLabel}</span>
           </div>
           <span className={`text-xl font-bold ${riskClass} leading-none`}>{formatPercentWithoutRounding(riskScore)}</span>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xl text-gray-200 leading-none">Expected return</span>
+          <span className="text-xl text-gray-200 leading-none">ผลตอบแทนคาดหวัง</span>
           <span className="text-xl font-bold text-teal-400 leading-none">
             {expectedReturnPercent >= 0 ? '+' : ''}
             {formatPercentWithoutRounding(expectedReturnPercent)}
@@ -141,8 +143,8 @@ export default function PortfolioCard({
       <div className="my-5 border-t border-gray-700" />
 
       <div className="relative z-20 flex items-center justify-between">
-        <p className="text-base text-gray-500 leading-none">Last updated {formattedDate}</p>
-        <DeletePortfolioButton id={id} name={name} />
+        <p className="text-base text-gray-500 leading-none">อัปเดตล่าสุด {formattedDate}</p>
+        <DeletePortfolioButton id={id} name={name} onDelete={onDelete} />
       </div>
     </article>
   );

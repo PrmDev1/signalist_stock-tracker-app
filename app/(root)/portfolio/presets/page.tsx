@@ -4,40 +4,40 @@ import { ArrowLeft, CandlestickChart, HandCoins, SlidersHorizontal, Scale } from
 import PresetCard from '@/components/portfolio/PresetCard';
 
 export const metadata: Metadata = {
-  title: 'Select Portfolio Preset | Stocks Portfolio',
-  description: 'Choose a portfolio preset to start building your investment strategy.',
+  title: 'เลือกรูปแบบพอร์ต | RoboAdvisor',
+  description: 'เลือกรูปแบบพอร์ตเพื่อเริ่มต้นวางแผนการลงทุนของคุณ',
 };
 
 const PRESET_OPTIONS = [
   {
-    title: 'Growth Portfolio',
+    title: 'พอร์ตเติบโต',
     subtitle: 'พอร์ตเน้นการเติบโต',
     description:
-      'Focuses on high-upside growth stocks with stronger momentum, suitable for long-term capital appreciation.',
+      'เน้นหุ้นเติบโตที่มีโอกาสขยายตัวสูง เหมาะสำหรับผู้ที่ต้องการสร้างมูลค่าเงินลงทุนในระยะยาว',
     icon: CandlestickChart,
     href: '/portfolio/select-stocks?preset=growth',
   },
   {
-    title: 'Dividend Portfolio',
+    title: 'พอร์ตเงินปันผล',
     subtitle: 'พอร์ตเน้นเงินปันผล',
     description:
-      'Prioritizes quality dividend-paying companies for steady income and lower overall volatility profile.',
+      'เน้นบริษัทคุณภาพที่จ่ายเงินปันผลสม่ำเสมอ เพื่อรับกระแสเงินสดและลดความผันผวนโดยรวมของพอร์ต',
     icon: HandCoins,
     href: '/portfolio/select-stocks?preset=dividend',
   },
   {
-    title: 'Mix Portfolio',
+    title: 'พอร์ตผสม',
     subtitle: 'พอร์ตผสมผสาน',
     description:
-      'Blends growth and income assets to target moderate risk with consistent long-term portfolio stability.',
+      'ผสมสินทรัพย์ที่เน้นการเติบโตและรายได้ เพื่อสมดุลความเสี่ยงและรักษาเสถียรภาพของพอร์ตในระยะยาว',
     icon: Scale,
     href: '/portfolio/select-stocks?preset=balanced',
   },
   {
-    title: 'Custom Portfolio',
+    title: 'พอร์ตกำหนดเอง',
     subtitle: 'พอร์ตกำหนดเอง',
     description:
-      'Choose assets manually and optimize allocation with AI insights based on your own risk and time horizon.',
+      'เลือกสินทรัพย์ด้วยตนเอง และใช้ข้อมูลเชิงลึกจาก AI เพื่อปรับสัดส่วนให้เหมาะกับความเสี่ยงและระยะเวลาการลงทุนของคุณ',
     icon: SlidersHorizontal,
     href: '/portfolio/select-stocks?preset=custom',
   },
@@ -48,12 +48,11 @@ export default function PortfolioPresetSelectionPage() {
     <section className="space-y-8 pb-10">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6ea8ff]">Portfolio Setup</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6ea8ff]">ตั้งค่าพอร์ต</p>
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Select Portfolio Preset</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">เลือกรูปแบบพอร์ต</h1>
             <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-              Start your investment journey by choosing a strategy template. Every preset now drives a dynamic
-              configuration form and strategy-specific optimization payload.
+              เริ่มต้นวางแผนการลงทุนด้วยการเลือกรูปแบบกลยุทธ์ที่เหมาะกับคุณ แต่ละตัวเลือกจะพาไปสู่แบบฟอร์มที่ปรับตามกลยุทธ์โดยอัตโนมัติ
             </p>
           </div>
         </div>
@@ -63,7 +62,7 @@ export default function PortfolioPresetSelectionPage() {
           className="inline-flex items-center gap-2 self-start rounded-xl border border-[#22324a] bg-[#0b1628] px-4 py-2 text-sm font-medium text-[#c0d9ff] transition-all duration-300 hover:border-[#36598c] hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Portfolio</span>
+          <span>กลับไปหน้าพอร์ต</span>
         </Link>
       </div>
 
@@ -77,7 +76,7 @@ export default function PortfolioPresetSelectionPage() {
             icon={preset.icon}
             href={preset.href}
             isAvailable
-            badge="Ready"
+            badge="พร้อมใช้"
           />
         ))}
       </div>

@@ -199,17 +199,17 @@ export default function SetPriceAlertPopover({
 						if (!Number.isFinite(numeric) || numeric <= 0) return;
 
 						if (!Number.isFinite(selectedStock.currentPrice) || selectedStock.currentPrice <= 0) {
-							toast.error('Current market price is unavailable for this stock');
+											toast.error('ไม่มีข้อมูลราคาตลาดปัจจุบันของหุ้นนี้');
 							return;
 						}
 
 						if (condition === 'GREATER' && numeric <= selectedStock.currentPrice) {
-							toast.error('For Greater than alert, threshold must be above current price');
+											toast.error('หากเลือกมากกว่า ราคาที่ตั้งต้องสูงกว่าราคาปัจจุบัน');
 							return;
 						}
 
 						if (condition === 'LESS' && numeric >= selectedStock.currentPrice) {
-							toast.error('For Less than alert, threshold must be below current price');
+											toast.error('หากเลือกน้อยกว่า ราคาที่ตั้งต้องต่ำกว่าราคาปัจจุบัน');
 							return;
 						}
 
@@ -236,53 +236,53 @@ export default function SetPriceAlertPopover({
 
 							const payload = (await response.json()) as { alert?: PriceAlertDto; error?: string };
 							if (!response.ok || !payload.alert) {
-								throw new Error(payload.error || 'Failed to save alert');
+								throw new Error(payload.error || 'ไม่สามารถบันทึกการแจ้งเตือนได้');
 							}
 
 							setExistingAlertId(payload.alert.id);
 							onSubmit({ ...toAlertRule(payload.alert), ticker: selectedStock.ticker });
-							toast.success(mode === 'edit' || existingAlertId ? 'Alert updated' : 'Alert created');
+							toast.success(mode === 'edit' || existingAlertId ? 'อัปเดตการแจ้งเตือนแล้ว' : 'สร้างการแจ้งเตือนแล้ว');
 							onOpenChange(false);
 						} catch (error) {
-							const message = error instanceof Error ? error.message : 'Failed to save alert';
+							const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกการแจ้งเตือนได้';
 							toast.error(message);
 						} finally {
 							setSaving(false);
 						}
 					}}
 				>
-					<DialogTitle className="text-3xl font-bold text-gray-100">Price Alert</DialogTitle>
+					<DialogTitle className="text-3xl font-bold text-gray-100">แจ้งเตือนราคา</DialogTitle>
 					<DialogDescription className="mt-1 text-sm text-gray-500">
 						{mode === 'edit'
-							? `Edit alert conditions for ${selectedStock.ticker}`
-							: 'Create alert conditions from your watchlist'}
+							? `แก้ไขเงื่อนไขการแจ้งเตือนของ ${selectedStock.ticker}`
+							: 'สร้างการแจ้งเตือนจากรายการเฝ้าดูของคุณ'}
 					</DialogDescription>
 
 					<div className="mt-6 space-y-4">
 						<div>
-							<Label className="text-gray-400">Alert Name</Label>
+							<Label className="text-gray-400">ชื่อการแจ้งเตือน</Label>
 							<Input
 								value={alertName}
 								onChange={(event) => setAlertName(event.target.value)}
 								className="mt-2 h-11 border-gray-600 bg-gray-700 text-gray-100"
-								placeholder="AAPL Watch"
+								placeholder="ติดตามราคา AAPL"
 							/>
 						</div>
 
 						<div>
-							<Label className="text-gray-400">Stock identifier</Label>
+							<Label className="text-gray-400">หุ้นที่ต้องการติดตาม</Label>
 							{canSelectStock ? (
 								<>
 									<Select value={selectedTicker} onValueChange={setSelectedTicker}>
 										<SelectTrigger className="mt-2 h-11 w-full border-gray-600 bg-gray-700 text-gray-100">
-											<SelectValue placeholder="Select stock from watchlist" />
+											<SelectValue placeholder="เลือกหุ้นจากรายการเฝ้าดู" />
 										</SelectTrigger>
 										<SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
 											{sortedStockOptions.map((option) => {
 												const hasExisting = existingAlertTickers.includes(option.ticker.toUpperCase());
 												return (
 													<SelectItem key={option.ticker} value={option.ticker}>
-														{option.company} ({option.ticker}){hasExisting ? ' · Existing alert' : ''}
+															{option.company} ({option.ticker}){hasExisting ? ' · มีการแจ้งเตือนแล้ว' : ''}
 													</SelectItem>
 												);
 											})}
@@ -290,7 +290,7 @@ export default function SetPriceAlertPopover({
 									</Select>
 									{hasExistingAlertForSelected && (
 										<div className="mt-2 inline-flex rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2.5 py-1 text-[11px] font-medium text-yellow-300">
-											Existing alert
+											มีการแจ้งเตือนอยู่แล้ว
 										</div>
 									)}
 								</>
@@ -304,10 +304,10 @@ export default function SetPriceAlertPopover({
 						</div>
 
 						<div>
-							<Label className="text-gray-400">Alert type</Label>
+							<Label className="text-gray-400">ประเภทการแจ้งเตือน</Label>
 							<Select value={alertType} onValueChange={(value) => setAlertType(value as 'Price')}>
 								<SelectTrigger className="mt-2 h-11 w-full border-gray-600 bg-gray-700 text-gray-100">
-									<SelectValue placeholder="Select type" />
+									<SelectValue placeholder="เลือกประเภท" />
 								</SelectTrigger>
 								<SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
 									<SelectItem value="Price">Price</SelectItem>
@@ -316,20 +316,20 @@ export default function SetPriceAlertPopover({
 						</div>
 
 						<div>
-							<Label className="text-gray-400">Condition</Label>
+							<Label className="text-gray-400">เงื่อนไข</Label>
 							<Select value={condition} onValueChange={(value) => setCondition(value as AlertRuleCondition)}>
 								<SelectTrigger className="mt-2 h-11 w-full border-gray-600 bg-gray-700 text-gray-100">
-									<SelectValue placeholder="Select condition" />
+									<SelectValue placeholder="เลือกเงื่อนไข" />
 								</SelectTrigger>
 								<SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
-									<SelectItem value="GREATER">Greater than (&gt;)</SelectItem>
-									<SelectItem value="LESS">Less than (&lt;)</SelectItem>
+									<SelectItem value="GREATER">มากกว่า (&gt;)</SelectItem>
+									<SelectItem value="LESS">น้อยกว่า (&lt;)</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 
 						<div>
-							<Label className="text-gray-400">Threshold value</Label>
+							<Label className="text-gray-400">ราคาที่ใช้แจ้งเตือน</Label>
 							<Input
 								value={triggerPrice}
 								onChange={(event) => setTriggerPrice(event.target.value)}
@@ -337,12 +337,12 @@ export default function SetPriceAlertPopover({
 								min="0"
 								step="0.01"
 								className="mt-2 h-11 border-gray-600 bg-gray-700 text-gray-100"
-								placeholder="e.g. 240.60"
+								placeholder="เช่น 240.60"
 							/>
 						</div>
 
 						<div>
-							<Label className="text-gray-400">Frequency</Label>
+							<Label className="text-gray-400">ความถี่</Label>
 							<Select
 								value={frequency}
 								onValueChange={(value) =>
@@ -350,12 +350,12 @@ export default function SetPriceAlertPopover({
 								}
 							>
 								<SelectTrigger className="mt-2 h-11 w-full border-gray-600 bg-gray-700 text-gray-100">
-									<SelectValue placeholder="Select frequency" />
+									<SelectValue placeholder="เลือกความถี่" />
 								</SelectTrigger>
 								<SelectContent className="border-gray-600 bg-gray-800 text-gray-100">
-									<SelectItem value="Once per day">Once per day</SelectItem>
-									<SelectItem value="Once per hour">Once per hour</SelectItem>
-									<SelectItem value="Once per minute">Once per minute</SelectItem>
+									<SelectItem value="Once per day">วันละครั้ง</SelectItem>
+									<SelectItem value="Once per hour">ชั่วโมงละครั้ง</SelectItem>
+									<SelectItem value="Once per minute">นาทีละครั้ง</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -368,12 +368,12 @@ export default function SetPriceAlertPopover({
 							className="h-11 w-full bg-gradient-to-b from-yellow-400 to-yellow-500 text-gray-900 hover:from-yellow-500 hover:to-yellow-400"
 						>
 							{saving
-								? 'Saving...'
+								? 'กำลังบันทึก...'
 								: mode === 'edit'
-									? 'Update Alert'
+									? 'อัปเดตการแจ้งเตือน'
 									: hasExistingAlertForSelected
-										? 'Update Existing Alert'
-										: 'Create Alert'}
+										? 'อัปเดตการแจ้งเตือนเดิม'
+										: 'สร้างการแจ้งเตือน'}
 						</Button>
 						<Button
 							type="button"
@@ -381,7 +381,7 @@ export default function SetPriceAlertPopover({
 							onClick={() => onOpenChange(false)}
 							className="h-11 w-full border-gray-600 bg-transparent text-gray-300 hover:bg-gray-700"
 						>
-							Cancel
+							ยกเลิก
 						</Button>
 					</div>
 				</form>

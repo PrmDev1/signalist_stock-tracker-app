@@ -1,3 +1,5 @@
+declare module '*.css';
+
 declare global {
     type SignInFormData = {
         email: string;

@@ -20,11 +20,11 @@ import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/actions/auth.actions';
 
 const SIDEBAR_LINKS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/market-summary', label: 'Market Summary', icon: CandlestickChart },
-  { href: '/watchlist', label: 'Watchlist', icon: Star },
-  { href: '/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
-  { href: '/community-portfolio', label: 'Community', icon: BarChart3 },
+  { href: '/', label: 'แดชบอร์ด', icon: LayoutDashboard },
+  { href: '/market-summary', label: 'ภาพรวมตลาด', icon: CandlestickChart },
+  { href: '/watchlist', label: 'รายการเฝ้าดู', icon: Star },
+  { href: '/portfolio', label: 'พอร์ตลงทุน', icon: BriefcaseBusiness },
+  { href: '/community-portfolio', label: 'พอร์ตชุมชน', icon: BarChart3 },
 ];
 
 function getInitials(name: string): string {
@@ -82,7 +82,7 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
       {isOpen ? (
         <button
           type="button"
-          aria-label="Close sidebar overlay"
+          aria-label="ปิดแถบเมนูด้านข้าง"
           className="fixed inset-0 z-50 bg-[#020611]/70 backdrop-blur-sm lg:hidden"
           onClick={() => setIsOpen(false)}
         />
@@ -108,7 +108,7 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
               tabIndex={isCollapsed ? -1 : undefined}
             >
               <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[22px] bg-[#0a0d17] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-                <Image src="/assets/icons/logo.svg" alt="Signalist logo" width={28} height={28} className="h-7 w-7" />
+                <Image src="/assets/icons/roboadvisor-mark.svg" alt="RoboAdvisor logo" width={28} height={28} className="h-7 w-7" />
               </div>
               <div
                 className={[
@@ -116,8 +116,7 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
                   isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100',
                 ].join(' ')}
               >
-                <p className="truncate text-[14px] font-semibold tracking-[0.06em] text-white">Signalist</p>
-                <p className="mt-1 truncate text-[12px] text-gray-500">signalist.app</p>
+                <p className="truncate text-[14px] font-semibold tracking-[0.06em] text-white">RoboAdvisor</p>
               </div>
             </Link>
 
@@ -132,7 +131,7 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
                     ? 'h-[48px] w-[48px] rounded-[20px] border border-white/10 bg-white/[0.03]'
                     : 'h-[48px] w-[48px] rounded-[20px] border border-white/10 bg-white/[0.02]',
                 ].join(' ')}
-                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-label={isCollapsed ? 'ขยายแถบเมนู' : 'ย่อแถบเมนู'}
               >
                 <ChevronsLeft
                   className={['h-[18px] w-[18px] transition-transform duration-300', isCollapsed ? 'rotate-180' : 'rotate-0'].join(' ')}
@@ -221,7 +220,7 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
                 ].join(' ')}
               >
                 <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-                <p className="truncate text-xs text-gray-500">{user.email || 'trader@signalist.dev'}</p>
+                <p className="truncate text-xs text-gray-500">{user.email || 'trader@roboadvisor.dev'}</p>
               </div>
             </div>
 
@@ -233,10 +232,10 @@ export default function SidebarNavbar({ user, isCollapsed, onToggleCollapsed }: 
                 'mt-3 h-10 rounded-2xl border border-white/10 bg-white/[0.05] text-white transition-all duration-300 hover:bg-white/[0.08]',
                 isCollapsed ? 'w-full px-0' : 'w-full',
               ].join(' ')}
-              title={isCollapsed ? 'Log out' : undefined}
+              title={isCollapsed ? 'ออกจากระบบ' : undefined}
             >
               <LogOut className="h-4 w-4" />
-              {!isCollapsed ? (isLoggingOut ? 'Logging out...' : 'Log out') : null}
+              {!isCollapsed ? (isLoggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ') : null}
             </Button>
           </div>
         </div>

@@ -24,7 +24,7 @@ export default function Navbar({ initialStocks }: NavbarProps) {
           if (href === '/search') {
             return (
               <li key="search-trigger">
-                <SearchCommand renderAs="text" label="Search" initialStocks={initialStocks} />
+                <SearchCommand renderAs="text" label="ค้นหาหุ้น" initialStocks={initialStocks} />
               </li>
             );
           }

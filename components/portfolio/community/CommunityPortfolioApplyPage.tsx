@@ -39,7 +39,7 @@ function formatPercent(value: number): string {
 }
 
 function formatCurrency(value?: number): string {
-  if (!Number.isFinite(value)) return 'N/A';
+  if (!Number.isFinite(value)) return 'ไม่มีข้อมูล';
 
   return new Intl.NumberFormat('en-US', {
     currency: 'USD',
@@ -53,12 +53,12 @@ function formatModel(value: string): string {
 }
 
 function formatCreatedDate(value?: string | null): string {
-  if (!value) return 'N/A';
+  if (!value) return 'ไม่มีข้อมูล';
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'N/A';
+  if (Number.isNaN(parsed.getTime())) return 'ไม่มีข้อมูล';
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('th-TH', {
     day: 'numeric',
     month: 'short',
     timeZone: 'UTC',
@@ -68,6 +68,14 @@ function formatCreatedDate(value?: string | null): string {
 
 function roundToCurrency(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function formatRiskLabel(value?: string): string {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === 'low') return 'ความเสี่ยงต่ำ';
+  if (normalized === 'high') return 'ความเสี่ยงสูง';
+  return 'ความเสี่ยงปานกลาง';
 }
 
 export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfolioApplyPageProps) {
@@ -93,7 +101,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
     try {
       const parsed = JSON.parse(stored) as CommunityPortfolioData;
       setSelectedPortfolio(parsed);
-      setPortfolioName(`${parsed.mvoId.slice(0, 8).toUpperCase()} Strategy`);
+      setPortfolioName(`พอร์ต ${parsed.mvoId.slice(0, 8).toUpperCase()}`);
       setTargetYears(String(Math.min(20, Math.max(1, Number(parsed.lookbackYears || 10)))));
     } catch {
       setSelectedPortfolio(null);
@@ -136,22 +144,22 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
     const normalizedTargetYears = Number(targetYears);
 
     if (!normalizedName) {
-      toast.error('Please enter a portfolio name.');
+      toast.error('กรุณากรอกชื่อพอร์ต');
       return;
     }
 
     if (!Number.isFinite(normalizedInitialCapital) || normalizedInitialCapital <= 0) {
-      toast.error('Investment amount must be greater than 0.');
+      toast.error('จำนวนเงินลงทุนต้องมากกว่า 0');
       return;
     }
 
     if (!Number.isFinite(normalizedMonthlyDca) || normalizedMonthlyDca < 0) {
-      toast.error('Monthly DCA must be 0 or greater.');
+      toast.error('เงิน DCA รายเดือนต้องไม่น้อยกว่า 0');
       return;
     }
 
     if (!Number.isFinite(normalizedTargetYears) || normalizedTargetYears < 1 || normalizedTargetYears > 20) {
-      toast.error('Target number of years must be between 1 and 20.');
+      toast.error('จำนวนปีเป้าหมายต้องอยู่ระหว่าง 1 ถึง 20 ปี');
       return;
     }
 
@@ -170,17 +178,17 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
       const payload = (await response.json().catch(() => ({}))) as PortfolioPreviewResponse & { error?: string; detail?: string };
 
       if (!response.ok) {
-        throw new Error(payload.error || payload.detail || payload.message || 'Unable to prepare a portfolio preview.');
+        throw new Error(payload.error || payload.detail || payload.message || 'ไม่สามารถเตรียมตัวอย่างพอร์ตได้');
       }
 
       if (!payload.portfolio || Object.keys(payload.portfolio.allocations || {}).length < 2) {
-        throw new Error('Preview data is incomplete. Please try another community strategy or adjust your investment amount.');
+        throw new Error('ข้อมูลตัวอย่างพอร์ตไม่สมบูรณ์ กรุณาลองเลือกพอร์ตอื่นหรือปรับจำนวนเงินลงทุน');
       }
 
       setPreviewData(payload);
       setDetailStep(2);
     } catch (previewIssue) {
-      const message = previewIssue instanceof Error ? previewIssue.message : 'Unable to prepare portfolio preview.';
+      const message = previewIssue instanceof Error ? previewIssue.message : 'ไม่สามารถเตรียมตัวอย่างพอร์ตได้';
       setPreviewError(message);
       toast.error(message);
     } finally {
@@ -197,12 +205,12 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
     const normalizedTargetYears = Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)));
 
     if (!previewData?.portfolio || Object.keys(previewData.portfolio.allocations || {}).length < 2) {
-      toast.error('Please generate the final portfolio preview before saving.');
+      toast.error('กรุณาสร้างตัวอย่างพอร์ตขั้นสุดท้ายก่อนบันทึก');
       return;
     }
 
     if (!Number.isFinite(normalizedTargetYears) || normalizedTargetYears < 1 || normalizedTargetYears > 20) {
-      toast.error('Target number of years must be between 1 and 20.');
+      toast.error('จำนวนปีเป้าหมายต้องอยู่ระหว่าง 1 ถึง 20 ปี');
       return;
     }
 
@@ -258,21 +266,21 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
       const simulatePayload = (await simulateResponse.json().catch(() => ({}))) as { error?: string; message?: string };
 
       if (!saveResponse.success || !saveResponse.portfolioId) {
-        throw new Error(saveResponse.error || 'Unable to create portfolio from this community strategy.');
+        throw new Error(saveResponse.error || 'ไม่สามารถสร้างพอร์ตจากกลยุทธ์ชุมชนนี้ได้');
       }
 
       if (!simulateResponse.ok) {
         toast.warning(
           simulatePayload.error ||
             simulatePayload.message ||
-            'Portfolio saved, but Monte Carlo warm-up could not be started. The detail page will retry automatically.'
+            'บันทึกพอร์ตแล้ว แต่ยังไม่สามารถเริ่ม Monte Carlo ได้ ระบบจะลองใหม่ให้อัตโนมัติในหน้ารายละเอียด'
         );
       }
 
-      toast.success('Portfolio created and added to your workspace.');
+          toast.success('สร้างพอร์ตและเพิ่มเข้าพื้นที่ทำงานของคุณแล้ว');
       router.push(`/portfolio/${saveResponse.portfolioId}`);
     } catch (creationError) {
-      const message = creationError instanceof Error ? creationError.message : 'Unable to create portfolio.';
+      const message = creationError instanceof Error ? creationError.message : 'ไม่สามารถสร้างพอร์ตได้';
       toast.error(message);
     } finally {
       setIsCreatingPortfolio(false);
@@ -285,11 +293,11 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,16,27,0.92),rgba(8,11,18,0.92))] p-6 backdrop-blur-xl sm:p-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#7db8ff]/25 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b9d8ff]">
             <Sparkles className="h-3.5 w-3.5" />
-            Community Portfolio Apply
+            ตั้งค่าพอร์ตชุมชน
           </div>
-          <h1 className="mt-4 text-3xl font-semibold text-white">Community portfolio session not found</h1>
+          <h1 className="mt-4 text-3xl font-semibold text-white">ไม่พบข้อมูลพอร์ตชุมชนที่เลือก</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
-            Re-open this strategy from the Community Portfolio discovery page so the selected portfolio data can be loaded into the setup flow.
+            กรุณากลับไปเปิดกลยุทธ์นี้จากหน้าพอร์ตชุมชนอีกครั้ง เพื่อให้ระบบโหลดข้อมูลเข้าสู่หน้าตั้งค่าได้ถูกต้อง
           </p>
           <Button
             type="button"
@@ -297,7 +305,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
             className="mt-5 rounded-2xl bg-gradient-to-r from-[#5862ff] to-[#0fedbe] text-[#030712]"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to community portfolios
+            กลับไปหน้าพอร์ตชุมชน
           </Button>
         </div>
       </section>
@@ -317,28 +325,28 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
               className="-ml-3 mb-3 h-auto px-3 py-2 text-gray-300 hover:bg-white/5 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to community portfolios
+              กลับไปหน้าพอร์ตชุมชน
             </Button>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#7db8ff]/25 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b9d8ff]">
               <Sparkles className="h-3.5 w-3.5" />
-              Community Portfolio Apply
+              ตั้งค่าพอร์ตชุมชน
             </div>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {selectedPortfolio.mvoId.slice(0, 8).toUpperCase()} Strategy
+              กลยุทธ์ {selectedPortfolio.mvoId.slice(0, 8).toUpperCase()}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-gray-400">
-              Step {detailStep} of 2. Configure your investment plan first, then review the final portfolio with Sharpe Ratio and backtest metrics before saving it to your workspace.
+              ขั้นตอนที่ {detailStep} จาก 2 ตั้งค่าแผนการลงทุนของคุณก่อน แล้วค่อยตรวจสอบพอร์ตสุดท้ายพร้อม Sharpe Ratio และผลทดสอบย้อนหลัง ก่อนบันทึกเข้าพื้นที่ทำงาน
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[420px]">
             <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Model</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">โมเดล</p>
               <p className="mt-2 text-xl font-semibold text-white">{formatModel(selectedPortfolio.modelName)}</p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Risk Level</p>
-              <p className="mt-2 text-xl font-semibold capitalize text-white">{selectedPortfolio.riskLv}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ระดับความเสี่ยง</p>
+              <p className="mt-2 text-xl font-semibold text-white">{formatRiskLabel(selectedPortfolio.riskLv)}</p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Sharpe Ratio</p>
@@ -352,13 +360,13 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Expected Return</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ผลตอบแทนคาดหวัง</p>
               <p className="mt-2 text-2xl font-semibold text-emerald-300">
                 {formatPercent((previewData?.portfolio?.expectedReturn ?? selectedPortfolio.expectedReturn))}
               </p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Volatility</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">ความผันผวน</p>
               <p className="mt-2 text-2xl font-semibold text-rose-300">
                 {formatPercent((previewData?.portfolio?.volatility ?? selectedPortfolio.volatility))}
               </p>
@@ -373,9 +381,9 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
 
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-white">Top allocation map</p>
+              <p className="text-sm font-medium text-white">สัดส่วนการลงทุนหลัก</p>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
-                {displayAllocations.length} ranked holdings
+                {displayAllocations.length} หุ้นที่จัดอันดับไว้
               </span>
             </div>
             <div className="mt-4 space-y-3">
@@ -398,16 +406,16 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
 
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-white">Portfolio details</p>
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{displayAllocations.length} ranked holdings</p>
+              <p className="text-sm font-medium text-white">รายละเอียดพอร์ต</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{displayAllocations.length} หุ้นที่จัดอันดับไว้</p>
             </div>
             <div className="mt-4 overflow-hidden rounded-[22px] border border-white/8 bg-black/20">
               <table className="w-full text-sm">
                 <thead className="bg-white/5 text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
                   <tr>
                     <th className="px-4 py-3 font-medium">Ticker</th>
-                    <th className="px-4 py-3 text-right font-medium">Weight</th>
-                    <th className="px-4 py-3 text-right font-medium">Allocated</th>
+                    <th className="px-4 py-3 text-right font-medium">สัดส่วน</th>
+                    <th className="px-4 py-3 text-right font-medium">มูลค่าที่จัดสรร</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,26 +434,26 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
 
         <div className="space-y-6">
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-            <p className="text-sm font-medium text-white">Portfolio metadata</p>
+            <p className="text-sm font-medium text-white">ข้อมูลพอร์ต</p>
             <dl className="mt-4 space-y-3 text-sm text-gray-300">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Model</dt>
+                <dt className="text-gray-500">โมเดล</dt>
                 <dd>{formatModel(selectedPortfolio.modelName)}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Risk level</dt>
-                <dd className="capitalize">{selectedPortfolio.riskLv}</dd>
+                <dt className="text-gray-500">ระดับความเสี่ยง</dt>
+                <dd>{formatRiskLabel(selectedPortfolio.riskLv)}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Lookback</dt>
-                <dd>{selectedPortfolio.lookbackYears} years</dd>
+                <dt className="text-gray-500">ช่วงข้อมูลย้อนหลัง</dt>
+                <dd>{selectedPortfolio.lookbackYears} ปี</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Diversification</dt>
-                <dd>{selectedPortfolio.isDiversified ? 'Diversified' : 'Concentrated'}</dd>
+                <dt className="text-gray-500">การกระจายการลงทุน</dt>
+                <dd>{selectedPortfolio.isDiversified ? 'กระจายการลงทุน' : 'กระจุกตัว'}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Created</dt>
+                <dt className="text-gray-500">วันที่สร้าง</dt>
                 <dd>{formatCreatedDate(selectedPortfolio.createAt)}</dd>
               </div>
             </dl>
@@ -457,11 +465,11 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                 {detailStep === 1 ? <PiggyBank className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{detailStep === 1 ? 'Step 1: Portfolio setup' : 'Step 2: Final portfolio review'}</p>
+                <p className="text-sm font-medium text-white">{detailStep === 1 ? 'ขั้นตอนที่ 1: ตั้งค่าพอร์ต' : 'ขั้นตอนที่ 2: ตรวจสอบพอร์ตสุดท้าย'}</p>
                 <p className="mt-2 text-sm leading-6 text-gray-300">
                   {detailStep === 1
-                    ? 'Enter the parameters needed to build your portfolio from this community strategy. Once ready, generate a complete preview with accurate allocations and backtest metrics.'
-                    : 'Review the final generated portfolio, including Sharpe Ratio and backtest metrics, before saving it into your personal portfolio workspace.'}
+                    ? 'กรอกข้อมูลที่ใช้สร้างพอร์ตจากกลยุทธ์ชุมชนนี้ เมื่อพร้อมแล้วให้สร้างตัวอย่างพอร์ตเพื่อดูสัดส่วนและผลทดสอบย้อนหลัง'
+                    : 'ตรวจสอบพอร์ตสุดท้าย รวมถึง Sharpe Ratio และผลทดสอบย้อนหลัง ก่อนบันทึกเข้าพื้นที่พอร์ตส่วนตัวของคุณ'}
                 </p>
               </div>
             </div>
@@ -469,12 +477,12 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
             {detailStep === 1 ? (
               <div className="mt-5 space-y-4">
                 <div>
-                  <label htmlFor="community-portfolio-name" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gray-400">Portfolio name</label>
+                    <label htmlFor="community-portfolio-name" className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gray-400">ชื่อพอร์ต</label>
                   <Input
                     id="community-portfolio-name"
                     value={portfolioName}
                     onChange={(event) => setPortfolioName(event.target.value)}
-                    placeholder="My Community Portfolio"
+                      placeholder="พอร์ตชุมชนของฉัน"
                     disabled={isPreparingPreview || isCreatingPortfolio}
                     className="h-11 rounded-2xl border-white/10 bg-black/20 text-white placeholder:text-gray-500"
                   />
@@ -484,7 +492,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                   <div>
                     <label htmlFor="community-investment-amount" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
                       <DollarSign className="h-3.5 w-3.5 text-[#0fedbe]" />
-                      Investment amount
+                      จำนวนเงินลงทุน
                     </label>
                     <Input
                       id="community-investment-amount"
@@ -502,7 +510,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                   <div>
                     <label htmlFor="community-monthly-dca" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
                       <PiggyBank className="h-3.5 w-3.5 text-[#7db8ff]" />
-                      Monthly DCA
+                      DCA รายเดือน
                     </label>
                     <Input
                       id="community-monthly-dca"
@@ -521,7 +529,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                 <div>
                   <label htmlFor="community-target-years" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
                     <TrendingUp className="h-3.5 w-3.5 text-[#b9d8ff]" />
-                    Target Number of Years
+                    จำนวนปีเป้าหมาย
                   </label>
                   <Input
                     id="community-target-years"
@@ -539,13 +547,13 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
 
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
                   <div className="flex items-center justify-between gap-3">
-                    <span>Projection setup</span>
+                    <span>การตั้งค่าจำลองผลลัพธ์</span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
-                      {Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} year horizon
+                      ระยะเวลา {Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} ปี
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-gray-400">
-                    We use your investment amount to request the final portfolio allocation and backtest preview, then submit your initial capital, monthly DCA, and target number of years as the Monte Carlo investment horizon when saving the portfolio.
+                    ระบบจะใช้จำนวนเงินลงทุนของคุณเพื่อคำนวณสัดส่วนพอร์ตและตัวอย่างผลทดสอบย้อนหลัง จากนั้นจะส่งเงินลงทุนเริ่มต้น DCA รายเดือน และจำนวนปีเป้าหมายไปใช้เป็นระยะเวลาจำลอง Monte Carlo เมื่อบันทึกพอร์ต
                   </p>
                 </div>
 
@@ -560,10 +568,10 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                   {isPreparingPreview ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Preparing final portfolio...
+                      กำลังเตรียมพอร์ตสุดท้าย...
                     </>
                   ) : (
-                    'Continue to final portfolio review'
+                    'ไปยังการตรวจสอบพอร์ตสุดท้าย'
                   )}
                 </Button>
               </div>
@@ -572,57 +580,57 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Sharpe Ratio</p>
-                    <p className="mt-2 text-2xl font-semibold text-[#b9d8ff]">{previewData?.portfolio?.sharpeRatio?.toFixed(2) ?? 'N/A'}</p>
+                    <p className="mt-2 text-2xl font-semibold text-[#b9d8ff]">{previewData?.portfolio?.sharpeRatio?.toFixed(2) ?? 'ไม่มีข้อมูล'}</p>
                   </div>
                   <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500">Backtest Return</p>
                     <p className="mt-2 text-2xl font-semibold text-emerald-300">
                       {typeof previewData?.backtestAndMetrics?.realizedMetrics?.realizedAnnualReturnPct === 'number'
                         ? `${previewData.backtestAndMetrics.realizedMetrics.realizedAnnualReturnPct.toFixed(1)}%`
-                        : 'N/A'}
+                        : 'ไม่มีข้อมูล'}
                     </p>
                   </div>
                 </div>
 
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-white">Final portfolio review</p>
+                    <p className="text-sm font-medium text-white">ตรวจสอบพอร์ตสุดท้าย</p>
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
                       <Shield className="h-3.5 w-3.5 text-[#0fedbe]" />
-                      Ready to save
+                      พร้อมบันทึก
                     </span>
                   </div>
                   <dl className="mt-4 space-y-3 text-sm text-gray-300">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Portfolio name</dt>
+                      <dt className="text-gray-500">ชื่อพอร์ต</dt>
                       <dd>{portfolioName}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Initial investment</dt>
+                      <dt className="text-gray-500">เงินลงทุนเริ่มต้น</dt>
                       <dd>{formatCurrency(Number(investmentAmount))}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Monthly DCA</dt>
+                      <dt className="text-gray-500">DCA รายเดือน</dt>
                       <dd>{formatCurrency(Number(monthlyDca))}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Target years</dt>
-                      <dd>{Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} years</dd>
+                      <dt className="text-gray-500">จำนวนปีเป้าหมาย</dt>
+                      <dd>{Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} ปี</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Expected annual return</dt>
-                      <dd className="text-emerald-300">{previewData?.portfolio ? formatPercent(previewData.portfolio.expectedReturn) : 'N/A'}</dd>
+                      <dt className="text-gray-500">ผลตอบแทนคาดหวังต่อปี</dt>
+                      <dd className="text-emerald-300">{previewData?.portfolio ? formatPercent(previewData.portfolio.expectedReturn) : 'ไม่มีข้อมูล'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Expected volatility</dt>
-                      <dd className="text-rose-300">{previewData?.portfolio ? formatPercent(previewData.portfolio.volatility) : 'N/A'}</dd>
+                      <dt className="text-gray-500">ความผันผวนคาดหวัง</dt>
+                      <dd className="text-rose-300">{previewData?.portfolio ? formatPercent(previewData.portfolio.volatility) : 'ไม่มีข้อมูล'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-gray-500">Historical max drawdown</dt>
+                      <dt className="text-gray-500">Max Drawdown ย้อนหลัง</dt>
                       <dd>
                         {typeof previewData?.backtestAndMetrics?.realizedMetrics?.historicalMaxDrawdownPct === 'number'
                           ? `${previewData.backtestAndMetrics.realizedMetrics.historicalMaxDrawdownPct.toFixed(1)}%`
-                          : 'N/A'}
+                          : 'ไม่มีข้อมูล'}
                       </dd>
                     </div>
                   </dl>
@@ -636,7 +644,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                     disabled={isCreatingPortfolio}
                     className="h-11 flex-1 rounded-2xl border-white/10 bg-black/20 text-white hover:bg-white/8"
                   >
-                    Back to setup
+                    กลับไปตั้งค่า
                   </Button>
                   <Button
                     type="button"
@@ -647,10 +655,10 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                     {isCreatingPortfolio ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving portfolio...
+                        กำลังบันทึกพอร์ต...
                       </>
                     ) : (
-                      'Save portfolio to my workspace'
+                      'บันทึกพอร์ตไปยังพื้นที่ทำงานของฉัน'
                     )}
                   </Button>
                 </div>
