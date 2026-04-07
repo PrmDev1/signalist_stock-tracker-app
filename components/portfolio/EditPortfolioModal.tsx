@@ -26,7 +26,6 @@ import type { FilteredStock } from '@/lib/portfolio-filtered-stocks';
 
 type RiskLevel = 'low' | 'medium' | 'high';
 type ModelName = 'mvo' | 'semi';
-type LookbackPreset = 'short' | 'medium' | 'long';
 
 interface EditPortfolioModalProps {
   portfolio: EditPortfolioData;
@@ -72,16 +71,11 @@ function slugifyId(symbol: string): string {
   return `${symbol.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toLookbackPreset(years?: number): LookbackPreset {
-  if ((years ?? 5) <= 3) return 'short';
-  if ((years ?? 5) >= 10) return 'long';
-  return 'medium';
-}
+function clampLookbackYears(years?: number | string): number {
+  const parsedYears = Number(years);
 
-function toLookbackYears(preset: LookbackPreset): number {
-  if (preset === 'short') return 3;
-  if (preset === 'long') return 10;
-  return 5;
+  if (!Number.isFinite(parsedYears)) return 5;
+  return Math.max(3, Math.min(20, Math.round(parsedYears)));
 }
 
 function buildInitialAssets(portfolio: EditPortfolioData): EditablePortfolioAsset[] {
@@ -128,7 +122,7 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
 
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(portfolio.riskLevel);
   const [modelName, setModelName] = useState<ModelName>(portfolio.modelName ?? 'mvo');
-  const [lookbackPreset, setLookbackPreset] = useState<LookbackPreset>(toLookbackPreset(portfolio.lookbackYears));
+  const [lookbackYears, setLookbackYears] = useState<number>(clampLookbackYears(portfolio.lookbackYears));
   const [monthlyDca, setMonthlyDca] = useState(portfolio.monthlyDca ?? 0);
   const [targetYears, setTargetYears] = useState(portfolio.targetYears ?? 10);
   const [brokerMinOrder, setBrokerMinOrder] = useState(5);
@@ -149,7 +143,7 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
       setAssets(buildInitialAssets(portfolio));
       setRiskLevel(portfolio.riskLevel);
       setModelName(portfolio.modelName ?? 'mvo');
-      setLookbackPreset(toLookbackPreset(portfolio.lookbackYears));
+      setLookbackYears(clampLookbackYears(portfolio.lookbackYears));
       setMonthlyDca(portfolio.monthlyDca ?? 0);
       setTargetYears(portfolio.targetYears ?? 10);
       setBrokerMinOrder(5);
@@ -264,8 +258,6 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
 
   const allocationBalanced = Math.abs(totalAllocation - 100) < 0.01;
   const canProceed = assets.length >= 2;
-  const lookbackYears = toLookbackYears(lookbackPreset);
-
   const oldAllocations = portfolio.allocations || {};
   const oldSymbols = Object.keys(oldAllocations);
   const newAllocations = optimizedResult?.allocations || {};
@@ -648,16 +640,15 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
 
                     <div>
                       <label className="mb-1 flex items-center text-sm font-medium text-gray-300">ระยะเวลาข้อมูลย้อนหลัง</label>
-                      <select
-                        value={lookbackPreset}
-                        onChange={(event) => setLookbackPreset(event.target.value as LookbackPreset)}
-                        className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-600 focus:outline-none"
-                      >
-                        <option value="short">สั้น</option>
-                        <option value="medium">กลาง</option>
-                        <option value="long">ยาว</option>
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">ระบบจะนำข้อมูลย้อนหลัง {lookbackYears} ปีมาวิเคราะห์</p>
+                      <input
+                        type="number"
+                        min={3}
+                        max={20}
+                        value={lookbackYears}
+                        onChange={(event) => setLookbackYears(clampLookbackYears(event.target.value))}
+                        className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder:text-gray-500 focus:border-blue-600 focus:outline-none"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">กรอกได้ตั้งแต่ 3 ถึง 20 ปี และหากกรอกเกินช่วง ระบบจะปรับกลับอัตโนมัติ</p>
                     </div>
 
                     <div>

@@ -40,6 +40,20 @@ export interface OptimizePayload {
   targetAllocations: Record<string, number>;
 }
 
+function clampLookbackYears(preset: PortfolioPreset, value: number): number {
+  const roundedValue = Math.round(Number(value));
+
+  if (preset === 'growth') {
+    return Math.max(3, Math.min(10, roundedValue));
+  }
+
+  if (preset === 'dividend' || preset === 'balanced') {
+    return Math.max(5, Math.min(15, roundedValue));
+  }
+
+  return Math.max(3, Math.min(20, roundedValue));
+}
+
 export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioConfiguratorFormValues {
   switch (preset) {
     case 'growth':
@@ -64,7 +78,7 @@ export function getDefaultPresetFormValues(preset: PortfolioPreset): PortfolioCo
       return {
         preset,
         customMethod: 'auto',
-        lookbackYears: 7,
+        lookbackYears: 5,
         span: 250,
         enableTargetAllocations: true,
         targetAllocations: { growth: 40, dividend: 30, balanced: 20, core: 10 },
@@ -111,7 +125,7 @@ export function toConfigurationState(
   return {
     preset,
     customMethod,
-    lookbackYears: Math.round(values.lookbackYears),
+    lookbackYears: clampLookbackYears(preset, values.lookbackYears),
     span: Math.max(180, Math.round(values.span)),
     targetAllocations,
     assetFilterTag: preset === 'growth' ? 'growth' : preset === 'dividend' ? 'dividend' : 'all',

@@ -25,7 +25,7 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
   const { control, register, setValue } = useForm<GrowthFormValues>({
     mode: 'onChange',
     defaultValues: {
-      lookbackYears: Number.isFinite(value.lookbackYears) ? value.lookbackYears : 7,
+      lookbackYears: Math.max(3, Math.min(10, Number.isFinite(value.lookbackYears) ? value.lookbackYears : 7)),
       span: value.span === 180 || value.span === 250 || value.span === 500 ? value.span : 250,
     },
   });
@@ -33,6 +33,14 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
   const lastSentRef = useRef<string>('');
   const lookbackYears = useWatch({ control, name: 'lookbackYears' });
   const span = useWatch({ control, name: 'span' });
+
+  useEffect(() => {
+    const normalizedLookbackYears = Math.max(3, Math.min(10, Math.round(Number(lookbackYears) || 7)));
+
+    if (normalizedLookbackYears !== lookbackYears) {
+      setValue('lookbackYears', normalizedLookbackYears, { shouldValidate: true });
+    }
+  }, [lookbackYears, setValue]);
 
   useEffect(() => {
     const next: PortfolioConfigurationState = {
@@ -97,7 +105,7 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
           }`}
           {...register('lookbackYears', { valueAsNumber: true, min: 3, max: 10 })}
         />
-        <p className="mt-1 text-xs text-gray-400">แนะนำช่วง 3 - 10 ปี</p>
+        <p className="mt-1 text-xs text-gray-400">กำหนดได้ตั้งแต่ 3 ถึง 10 ปี และหากกรอกเกินช่วง ระบบจะปรับกลับอัตโนมัติ</p>
         {showWarning ? (
           <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-amber-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />

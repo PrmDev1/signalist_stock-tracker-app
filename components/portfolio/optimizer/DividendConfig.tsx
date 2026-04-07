@@ -15,7 +15,7 @@ interface DividendFormValues {
 }
 
 export default function DividendConfig({ value, onChange }: DividendConfigProps) {
-  const { control, register } = useForm<DividendFormValues>({
+  const { control, register, setValue } = useForm<DividendFormValues>({
     mode: 'onChange',
     defaultValues: {
       lookbackYears: Math.max(5, Math.min(15, Number.isFinite(value.lookbackYears) ? value.lookbackYears : 10)),
@@ -24,6 +24,14 @@ export default function DividendConfig({ value, onChange }: DividendConfigProps)
 
   const lookbackYears = useWatch({ control, name: 'lookbackYears' });
   const lastSentRef = useRef<string>('');
+
+  useEffect(() => {
+    const normalizedLookbackYears = Math.max(5, Math.min(15, Math.round(Number(lookbackYears) || 10)));
+
+    if (normalizedLookbackYears !== lookbackYears) {
+      setValue('lookbackYears', normalizedLookbackYears, { shouldValidate: true });
+    }
+  }, [lookbackYears, setValue]);
 
   useEffect(() => {
     const next: PortfolioConfigurationState = {
@@ -75,7 +83,7 @@ export default function DividendConfig({ value, onChange }: DividendConfigProps)
             max: 15,
           })}
         />
-        <p className="mt-1 text-xs text-gray-400">ขั้นต่ำ 5 ปี และแนะนำ 10 - 15 ปี เพื่อดูความสม่ำเสมอของเงินปันผล</p>
+        <p className="mt-1 text-xs text-gray-400">กำหนดได้ตั้งแต่ 5 ถึง 15 ปี และหากกรอกเกินช่วง ระบบจะปรับกลับอัตโนมัติ</p>
       </div>
 
       <div className="rounded-[20px] border border-white/10 bg-[#1b1f29] p-4 text-xs text-gray-300">

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu } from 'lucide-react';
 import NotificationAlertsButton from '@/components/NotificationAlertsButton';
 import SearchCommand from '@/components/SearchCommand';
 import SidebarNavbar from '@/components/SidebarNavbar';
@@ -46,12 +45,8 @@ export default function MainLayout({ children, user, initialStocks }: MainLayout
 
                   <NotificationAlertsButton />
 
-                  <div className="hidden min-w-[160px] items-center justify-between rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:flex">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-                      <p className="truncate text-[11px] text-gray-500">Workspace</p>
-                    </div>
-                    <Menu className="h-5 w-5 text-gray-400" />
+                  <div className="hidden min-w-[160px] max-w-[220px] items-center rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:flex">
+                    <p className="w-full truncate text-sm font-semibold text-white">{user.name}</p>
                   </div>
                 </div>
               </div>

@@ -100,7 +100,7 @@ export default function ParameterPanel({
     },
     {
       key: 'balanced',
-      title: 'Balanced Mode',
+      title: 'Mix Mode',
       description: 'Diversified allocation that blends growth, income, and stability.',
       detail: 'Best fit for general-purpose portfolio building',
       recommended: true,

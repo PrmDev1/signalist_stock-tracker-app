@@ -43,7 +43,7 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
     mode: 'onChange',
     defaultValues: {
       customMethod: value.customMethod,
-      lookbackYears: Number.isFinite(value.lookbackYears) ? value.lookbackYears : 5,
+      lookbackYears: Math.max(3, Math.min(20, Number.isFinite(value.lookbackYears) ? value.lookbackYears : 5)),
       span: value.span === 180 || value.span === 250 || value.span === 500 ? value.span : 250,
       enableTargetAllocations: Object.keys(value.targetAllocations ?? {}).length > 0,
       targetAllocations: {
@@ -63,6 +63,14 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
   const dividend = useWatch({ control, name: 'targetAllocations.dividend' });
   const balanced = useWatch({ control, name: 'targetAllocations.balanced' });
   const core = useWatch({ control, name: 'targetAllocations.core' });
+
+  useEffect(() => {
+    const normalizedLookbackYears = Math.max(3, Math.min(20, Math.round(Number(lookbackYears) || 5)));
+
+    if (normalizedLookbackYears !== lookbackYears) {
+      setValue('lookbackYears', normalizedLookbackYears, { shouldValidate: true });
+    }
+  }, [lookbackYears, setValue]);
 
   // Zero out unavailable types whenever availableTagAllocations changes
   useEffect(() => {
@@ -181,6 +189,7 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
             className="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/40"
             {...register('lookbackYears', { valueAsNumber: true, min: 3, max: 20 })}
           />
+          <p className="mt-1 text-xs text-gray-400">กำหนดได้ตั้งแต่ 3 ถึง 20 ปี และหากกรอกเกินช่วง ระบบจะปรับกลับอัตโนมัติ</p>
         </div>
 
         <div>
@@ -258,7 +267,6 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
                     disabled={!availableTagAllocations.core}
                   />
                 </div>
-                <p className="text-xs text-gray-400">ตัวอย่าง payload: {"{\"growth\": 0.40, \"dividend\": 0.30, \"balanced\": 0.20, \"Core\": 0.10}"}</p>
               </div>
             ) : (
               <p className="text-xs text-gray-500">เมื่อปิดไว้ ระบบจะส่ง targetAllocations เป็น {}</p>

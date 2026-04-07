@@ -36,7 +36,7 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
   const { control, register, setValue } = useForm<BalancedFormValues>({
     mode: 'onChange',
     defaultValues: {
-      lookbackYears: Number.isFinite(value.lookbackYears) ? value.lookbackYears : 7,
+      lookbackYears: Math.max(5, Math.min(15, Number.isFinite(value.lookbackYears) ? value.lookbackYears : 5)),
       targetAllocations: {
         growth: toPercent(value.targetAllocations.growth != null ? value.targetAllocations.growth * 100 : undefined, 40),
         dividend: toPercent(value.targetAllocations.dividend != null ? value.targetAllocations.dividend * 100 : undefined, 30),
@@ -103,10 +103,18 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
   }, [availableTagAllocations.balanced, availableTagAllocations.core, availableTagAllocations.dividend, availableTagAllocations.growth, balanced, core, dividend, growth, setValue]);
 
   useEffect(() => {
+    const normalizedLookbackYears = Math.max(5, Math.min(15, Math.round(Number(lookbackYears) || 5)));
+
+    if (normalizedLookbackYears !== lookbackYears) {
+      setValue('lookbackYears', normalizedLookbackYears, { shouldValidate: true });
+    }
+  }, [lookbackYears, setValue]);
+
+  useEffect(() => {
     const next: PortfolioConfigurationState = {
       preset: 'balanced',
       customMethod: 'auto',
-      lookbackYears: Math.max(3, Math.min(15, Math.round(Number(lookbackYears) || 7))),
+      lookbackYears: Math.max(5, Math.min(15, Math.round(Number(lookbackYears) || 5))),
       span: 250,
       targetAllocations: payloadAllocations,
       assetFilterTag: 'all',
@@ -147,7 +155,7 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
             <Blend className="h-5 w-5 text-indigo-300" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-white sm:text-lg">Balanced Mode</h3>
+            <h3 className="text-base font-semibold text-white sm:text-lg">Mix Mode</h3>
             <p className="text-xs text-indigo-200/80">สายผสมผสาน เน้นกระจายความเสี่ยง</p>
           </div>
         </div>
@@ -163,12 +171,12 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
         <input
           id="balanced-lookback-years"
           type="number"
-          min={3}
+          min={5}
           max={15}
           className="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
-          {...register('lookbackYears', { valueAsNumber: true, min: 3, max: 15 })}
+          {...register('lookbackYears', { valueAsNumber: true, min: 5, max: 15 })}
         />
-        <p className="mt-1 text-xs text-gray-400">แนะนำช่วง 5 - 10 ปี และระบบจะส่ง span ค่าเริ่มต้น 250 อัตโนมัติ</p>
+        <p className="mt-1 text-xs text-gray-400">กำหนดได้ตั้งแต่ 5 ถึง 15 ปี และหากกรอกเกินช่วง ระบบจะปรับกลับอัตโนมัติ</p>
       </div>
 
       <div className="space-y-3 rounded-[20px] border border-white/10 bg-[#1b1f29] p-4">
@@ -210,8 +218,6 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
             disabled={!availableTagAllocations.core}
           />
         </div>
-
-        <p className="text-xs text-gray-400">ตัวอย่าง payload: {"{\"growth\": 0.40, \"dividend\": 0.30, \"balanced\": 0.20, \"Core\": 0.10}"}</p>
       </div>
     </section>
   );
