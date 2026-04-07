@@ -140,7 +140,7 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
   };
 
   return (
-    <section className="mt-5 space-y-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-gray-900 to-gray-900 p-4 sm:p-5">
+    <section className="space-y-4 rounded-[24px] border border-[#4d73ff]/20 bg-[linear-gradient(180deg,rgba(30,37,64,0.8),rgba(16,20,31,0.98))] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-500/40 bg-indigo-500/10">
@@ -151,7 +151,7 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
             <p className="text-xs text-indigo-200/80">สายผสมผสาน เน้นกระจายความเสี่ยง</p>
           </div>
         </div>
-        <span className="rounded-md border border-indigo-300/40 bg-indigo-400/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
+        <span className="rounded-full border border-indigo-300/30 bg-indigo-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
           auto locked
         </span>
       </div>
@@ -171,7 +171,7 @@ export default function BalancedConfig({ value, onChange, availableTagAllocation
         <p className="mt-1 text-xs text-gray-400">แนะนำช่วง 5 - 10 ปี และระบบจะส่ง span ค่าเริ่มต้น 250 อัตโนมัติ</p>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-gray-700 bg-gray-900/70 p-4">
+      <div className="space-y-3 rounded-[20px] border border-white/10 bg-[#1b1f29] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-gray-100">Target Allocations</p>

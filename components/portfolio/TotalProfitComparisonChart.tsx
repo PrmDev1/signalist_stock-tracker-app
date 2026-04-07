@@ -12,7 +12,9 @@ interface TotalProfitComparisonChartProps {
 
 interface ChartPoint {
   year: number;
+  portfolioValue: number;
   investedCapital: number;
+  annualContribution: number;
   portfolioProfit: number;
   portfolioReturnPercent: number;
 }
@@ -63,19 +65,31 @@ export default function TotalProfitComparisonChart({
     }
 
     const maxIndex = Math.max(0, maxLength - 1);
+    let previousPortfolioValue = Math.max(0, initialCapital);
+    let previousInvestedCapital = Math.max(0, initialCapital);
 
     return Array.from({ length: safeHorizon }, (_, index) => {
       const yearNumber = index + 1;
       const targetIndex = Math.min(maxIndex, Math.round((yearNumber / safeHorizon) * maxIndex));
+      const portfolioValue = portfolioPath[targetIndex] ?? portfolioPath[portfolioPath.length - 1] ?? 0;
       const contributionBasis = getContributionBasis(targetIndex, maxIndex, initialCapital, monthlyDca, investmentHorizon);
-      const portfolioProfit = (portfolioPath[targetIndex] ?? portfolioPath[portfolioPath.length - 1] ?? 0) - contributionBasis;
+      const annualContribution = Math.max(0, contributionBasis - previousInvestedCapital);
+      const portfolioProfit = portfolioValue - previousPortfolioValue - annualContribution;
+      const profitBase = Math.max(1, previousPortfolioValue);
 
-      return {
+      const point = {
         year: new Date().getFullYear() + yearNumber,
+        portfolioValue,
         investedCapital: contributionBasis,
+        annualContribution,
         portfolioProfit,
-        portfolioReturnPercent: contributionBasis > 0 ? (portfolioProfit / contributionBasis) * 100 : 0,
+        portfolioReturnPercent: (portfolioProfit / profitBase) * 100,
       } satisfies ChartPoint;
+
+      previousPortfolioValue = portfolioValue;
+      previousInvestedCapital = contributionBasis;
+
+      return point;
     });
   }, [data, initialCapital, investmentHorizon, monthlyDca]);
 
@@ -90,12 +104,12 @@ export default function TotalProfitComparisonChart({
     }
 
     const totalProfit = latestYear.portfolioProfit;
-    const totalInvested = latestYear.investedCapital;
-    const totalProfitPercent = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+    const totalProfitPercent = latestYear.portfolioReturnPercent;
 
     return {
       totalProfit,
       totalProfitPercent,
+      year: latestYear.year,
     };
   }, [chartData]);
 
@@ -133,8 +147,8 @@ export default function TotalProfitComparisonChart({
     return (
       <section className="rounded-[28px] border border-[#1f2a3d] bg-[#070b13] p-6">
         <div>
-          <p className="text-sm font-semibold text-white">Total Profit</p>
-          <p className="mt-2 text-sm text-gray-400">Run the Monte Carlo simulation to show the portfolio profit forecast.</p>
+          <p className="text-sm font-semibold text-white">Profit YoY</p>
+          <p className="mt-2 text-sm text-gray-400">Run the Monte Carlo simulation to show the annual year-over-year profit forecast.</p>
         </div>
         <div className="mt-6 flex h-[260px] items-center justify-center rounded-[22px] border border-dashed border-[#2b3b54] bg-[#0b111d] text-sm text-gray-500">
           Waiting for simulation data
@@ -147,7 +161,7 @@ export default function TotalProfitComparisonChart({
     <section className="rounded-[28px] border border-[#1f2a3d] bg-[#070b13] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[1.35rem] font-semibold text-white">Total Profit</p>
+          <p className="text-[1.35rem] font-semibold text-white">Annual Profit</p>
           <p className="mt-4 text-[clamp(2.4rem,5vw,3.4rem)] font-semibold tracking-[-0.03em] text-white">
             {formatCurrency(summary.totalProfit)}
           </p>
@@ -155,7 +169,7 @@ export default function TotalProfitComparisonChart({
             <span className="rounded-full bg-[#113220] px-3 py-1 font-semibold text-[#35d27d]">
               {formatSignedPercent(summary.totalProfitPercent)}
             </span>
-            <span className="text-gray-400">{formatSignedCurrency(summary.totalProfit)} versus contributed capital</span>
+            <span className="text-gray-400">{formatSignedCurrency(summary.totalProfit)} in {summary.year} after removing that year's new contributions</span>
           </div>
         </div>
       </div>

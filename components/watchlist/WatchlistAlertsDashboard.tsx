@@ -34,20 +34,25 @@ const toAlertRule = (dto: PriceAlertDto): AlertRule => ({
 });
 
 export default function WatchlistAlertsDashboard({ initialStocks, rows }: WatchlistAlertsDashboardProps) {
+	const [watchlistRows, setWatchlistRows] = useState(rows);
 	const [alertsByTicker, setAlertsByTicker] = useState<Record<string, AlertRule[]>>({});
 	const [modalState, setModalState] = useState<AlertModalState | null>(null);
 
+	useEffect(() => {
+		setWatchlistRows(rows);
+	}, [rows]);
+
 	const rowByTicker = useMemo(() => {
 		const map = new Map<string, WatchlistAlertRow>();
-		for (const row of rows) {
+		for (const row of watchlistRows) {
 			map.set(row.ticker.toUpperCase(), row);
 		}
 		return map;
-	}, [rows]);
+	}, [watchlistRows]);
 
 	const groups = useMemo(
 		() =>
-			rows
+			watchlistRows
 				.map((row) => ({
 					ticker: row.ticker,
 					company: row.company,
@@ -56,17 +61,17 @@ export default function WatchlistAlertsDashboard({ initialStocks, rows }: Watchl
 					alerts: alertsByTicker[row.ticker.toUpperCase()] || [],
 				}))
 				.filter((group) => group.alerts.length > 0),
-		[rows, alertsByTicker]
+		[watchlistRows, alertsByTicker]
 	);
 
 	const stockOptions = useMemo(
 		() =>
-			rows.map((row) => ({
+			watchlistRows.map((row) => ({
 				ticker: row.ticker,
 				company: row.company,
 				currentPrice: row.currentPrice,
 			})),
-		[rows]
+		[watchlistRows]
 	);
 
 	const existingAlertTickers = useMemo(
@@ -139,7 +144,7 @@ export default function WatchlistAlertsDashboard({ initialStocks, rows }: Watchl
 	};
 
 	useEffect(() => {
-		if (rows.length === 0) {
+		if (watchlistRows.length === 0) {
 			setAlertsByTicker({});
 			return;
 		}
@@ -148,7 +153,7 @@ export default function WatchlistAlertsDashboard({ initialStocks, rows }: Watchl
 
 		const loadAlerts = async () => {
 			try {
-				const tickers = rows.map((row) => row.ticker.toUpperCase()).join(',');
+				const tickers = watchlistRows.map((row) => row.ticker.toUpperCase()).join(',');
 				const response = await fetch(`/api/alerts?tickers=${encodeURIComponent(tickers)}`, {
 					method: 'GET',
 					cache: 'no-store',
@@ -178,7 +183,29 @@ export default function WatchlistAlertsDashboard({ initialStocks, rows }: Watchl
 		return () => {
 			active = false;
 		};
-	}, [rows]);
+	}, [watchlistRows]);
+
+	const handleWatchlistChange = (ticker: string, isAdded: boolean) => {
+		if (isAdded) {
+			return;
+		}
+
+		const key = ticker.toUpperCase();
+		setWatchlistRows((prev) => prev.filter((row) => row.ticker.toUpperCase() !== key));
+		setAlertsByTicker((prev) => {
+			const next = { ...prev };
+			delete next[key];
+			return next;
+		});
+
+		setModalState((prev) => {
+			if (!prev?.stock) {
+				return prev;
+			}
+
+			return prev.stock.ticker.toUpperCase() === key ? null : prev;
+		});
+	};
 
 	return (
 		<>
@@ -203,11 +230,12 @@ export default function WatchlistAlertsDashboard({ initialStocks, rows }: Watchl
 
 			<div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px] xl:gap-4 2xl:grid-cols-[minmax(0,1fr)_342px]">
 				<AlertsTableInteraction
-					rows={rows}
+					rows={watchlistRows}
 					alertsByTicker={alertsByTicker}
 					onCreateAlert={(row) => setModalState({ mode: 'create', stock: row })}
 					onEditAlert={(row, alert) => setModalState({ mode: 'edit', stock: row, alert })}
 					onDeleteAlert={deleteAlert}
+					onWatchlistChange={handleWatchlistChange}
 				/>
 
 				<ActiveAlertsManager

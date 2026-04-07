@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Bell, Pencil, Star, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, Pencil, Trash2 } from 'lucide-react';
 import {
 	Popover,
 	PopoverContent,
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { cn, getChangeColorClass } from '@/lib/utils';
 import type { AlertRule } from '@/components/modals/SetPriceAlertPopover';
+import WatchlistButton from '@/components/WatchlistButton';
 
 export interface WatchlistAlertRow {
 	ticker: string;
@@ -37,6 +39,7 @@ interface AlertsTableInteractionProps {
 	onCreateAlert: (row: WatchlistAlertRow) => void;
 	onEditAlert: (row: WatchlistAlertRow, alert: AlertRule) => void;
 	onDeleteAlert: (ticker: string, alertId: string) => void;
+	onWatchlistChange?: (ticker: string, isAdded: boolean) => void;
 }
 
 const getConditionText = (alert: AlertRule) => {
@@ -50,7 +53,9 @@ export default function AlertsTableInteraction({
 	onCreateAlert,
 	onEditAlert,
 	onDeleteAlert,
+	onWatchlistChange,
 }: AlertsTableInteractionProps) {
+	const router = useRouter();
 	const displayRows = useMemo(
 		() =>
 			rows.map((row) => {
@@ -95,11 +100,22 @@ export default function AlertsTableInteraction({
 
 				<TableBody>
 					{displayRows.map((row) => (
-						<TableRow key={row.key} className="h-[54px] border-b border-gray-600/80 bg-transparent hover:bg-[#191c23]">
+						<TableRow
+							key={row.key}
+							className="h-[54px] cursor-pointer border-b border-gray-600/80 bg-transparent hover:bg-[#191c23]"
+							onClick={() => router.push(`/stocks/${encodeURIComponent(row.ticker)}`)}
+						>
 							<TableCell className="pl-2">
-								<span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-600 bg-[#2a2f39] text-yellow-400/90">
-									<Star className="h-3.5 w-3.5 fill-current" />
-								</span>
+								<div className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-600 bg-[#2a2f39] text-yellow-400/90">
+									<WatchlistButton
+										symbol={row.ticker}
+										company={row.company}
+										isInWatchlist={true}
+										showTrashIcon={true}
+										type="icon"
+										onWatchlistChange={onWatchlistChange}
+									/>
+								</div>
 							</TableCell>
 							<TableCell className="truncate px-3 text-[16px] font-medium leading-none text-gray-100">{row.company}</TableCell>
 							<TableCell className="px-3 text-[16px] font-semibold leading-none text-gray-100">{row.ticker}</TableCell>
@@ -116,6 +132,10 @@ export default function AlertsTableInteraction({
 										<PopoverTrigger asChild>
 											<button
 												type="button"
+												onClick={(event) => {
+													event.preventDefault();
+													event.stopPropagation();
+												}}
 												className="inline-flex h-9 w-[116px] items-center justify-center gap-1.5 rounded-[6px] border border-yellow-500/25 bg-[#1c1910] px-2.5 text-[15px] font-semibold text-yellow-500 transition hover:border-yellow-500/40 hover:bg-[#292115]"
 												aria-label={`View alerts for ${row.ticker}`}
 											>
@@ -147,7 +167,11 @@ export default function AlertsTableInteraction({
 																<button
 																	type="button"
 																	className="rounded p-1.5 text-gray-400 transition hover:bg-blue-500/15 hover:text-blue-300"
-																	onClick={() => onEditAlert(row, alert)}
+																	onClick={(event) => {
+																		event.preventDefault();
+																		event.stopPropagation();
+																		onEditAlert(row, alert);
+																	}}
 																	aria-label={`Edit alert ${alert.id}`}
 																>
 																	<Pencil className="h-3.5 w-3.5" />
@@ -155,7 +179,11 @@ export default function AlertsTableInteraction({
 																<button
 																	type="button"
 																	className="rounded p-1.5 text-gray-400 transition hover:bg-red-500/15 hover:text-red-300"
-																	onClick={() => onDeleteAlert(row.ticker, alert.id)}
+																	onClick={(event) => {
+																		event.preventDefault();
+																		event.stopPropagation();
+																		onDeleteAlert(row.ticker, alert.id);
+																	}}
 																	aria-label={`Delete alert ${alert.id}`}
 																>
 																	<Trash2 className="h-3.5 w-3.5" />
@@ -170,7 +198,11 @@ export default function AlertsTableInteraction({
 								) : (
 									<button
 										type="button"
-										onClick={() => onCreateAlert(row)}
+										onClick={(event) => {
+											event.preventDefault();
+											event.stopPropagation();
+											onCreateAlert(row);
+										}}
 										className="inline-flex h-9 w-[116px] items-center justify-center gap-1.5 rounded-[6px] border border-[#704731]/45 bg-[#3f281a] px-2.5 text-[14px] font-medium text-[#ed9850] transition hover:border-[#926040] hover:bg-[#4f3020]"
 										aria-label={`Create alert for ${row.ticker}`}
 									>

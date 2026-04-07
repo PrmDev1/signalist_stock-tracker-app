@@ -54,7 +54,7 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
   const showWarning = Number(lookbackYears) > 10;
 
   return (
-    <section className="mt-5 space-y-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/50 via-gray-900 to-gray-900 p-4 sm:p-5">
+    <section className="space-y-4 rounded-[24px] border border-[#4d73ff]/20 bg-[linear-gradient(180deg,rgba(30,37,64,0.8),rgba(16,20,31,0.98))] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/10">
@@ -65,12 +65,12 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
             <p className="text-xs text-emerald-200/80">สายซิ่ง เน้นเติบโต</p>
           </div>
         </div>
-        <span className="rounded-md border border-emerald-300/40 bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-200">
+        <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
           ema locked
         </span>
       </div>
 
-      <div className="rounded-xl border border-gray-700 bg-gray-900/70 p-3">
+      <div className="rounded-[20px] border border-white/10 bg-[#1b1f29] p-4">
         <div className="mb-1 flex items-center justify-between">
           <p className="text-sm font-medium text-gray-200">วิธีคำนวณ</p>
           <span className="inline-flex items-center gap-1 text-xs text-amber-300">
@@ -130,7 +130,7 @@ export default function GrowthConfig({ value, onChange }: GrowthConfigProps) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-blue-400/30 bg-blue-500/10 p-3">
+      <div className="rounded-[20px] border border-blue-400/20 bg-blue-500/10 p-4">
         <p className="text-sm font-semibold text-blue-100">AI Auto Allocation</p>
         <p className="mt-1 text-xs text-blue-100/80">
           ระบบจะส่ง targetAllocations เป็น {} เพื่อให้ backend หาน้ำหนักที่เหมาะกับการเติบโตสูงสุดอัตโนมัติ

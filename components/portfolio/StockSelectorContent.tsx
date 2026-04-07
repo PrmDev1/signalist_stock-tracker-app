@@ -472,9 +472,8 @@ export default function StockSelectorContent() {
   }, [currentPage, totalPages]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+    <div className="relative min-w-0 overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(11,15,25,0.98),rgba(7,10,18,0.98))] shadow-[0_28px_100px_rgba(0,0,0,0.34)]">
+      <div className="flex min-h-[calc(100vh-10.5rem)] min-w-0 flex-col overflow-hidden">
         {/* Header */}
         <SelectAssetHeader
           onClose={handleClose}
@@ -484,7 +483,7 @@ export default function StockSelectorContent() {
         />
 
         {/* Section Header - US Stocks */}
-        <div className="sticky top-16 sm:top-20 z-30 px-4 py-3 sm:px-6 sm:py-4 bg-gray-900/95 backdrop-blur border-b border-gray-800 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/6 bg-white/[0.02] px-4 py-3 sm:px-6 sm:py-4">
           <h2 className="text-base sm:text-lg font-semibold text-white">
             US stocks
           </h2>
@@ -493,7 +492,7 @@ export default function StockSelectorContent() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-xs sm:text-sm text-gray-200 hover:bg-gray-700/70 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.04] px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/[0.08] sm:text-sm"
                   title="เลือกคอลัมน์ที่ต้องการแสดง"
                 >
                   <Columns3 className="w-4 h-4" />
@@ -530,7 +529,7 @@ export default function StockSelectorContent() {
           </div>
         </div>
 
-        <div className="px-4 py-2 sm:px-6 border-b border-gray-800 bg-gray-900/80">
+        <div className="shrink-0 border-b border-white/6 bg-white/[0.02] px-4 py-2.5 sm:px-6">
           <p className="text-xs text-gray-300">
             Active preset filter:{' '}
             <span className="font-semibold text-cyan-300 uppercase tracking-[0.1em]">
@@ -540,7 +539,7 @@ export default function StockSelectorContent() {
         </div>
 
         {/* Stock List */}
-        <div className="tv-scrollbar flex-1 overflow-auto">
+        <div className="tv-scrollbar min-h-0 flex-1 overflow-auto">
           {loading && (
             <div className="flex flex-col items-center justify-center h-32 gap-2">
               <Loader className="w-8 h-8 text-blue-500 animate-spin" />
@@ -582,7 +581,7 @@ export default function StockSelectorContent() {
           {!loading && presetFilteredStocks.length > 0 && (
             <div>
               <div
-                className="sticky top-0 z-20 grid gap-3 border-b border-gray-700 bg-gray-900/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-200 backdrop-blur"
+                className="sticky top-0 z-10 grid gap-3 border-b border-white/8 bg-[rgba(10,14,24,0.94)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-blue-200 backdrop-blur"
                 style={{ gridTemplateColumns: columnTemplate }}
               >
                 {activeColumnDefs.map((column) => (
@@ -648,7 +647,7 @@ export default function StockSelectorContent() {
 
         {/* Sticky Pagination Bar */}
         {!loading && totalPages > 1 && (
-          <div className="sticky bottom-[88px] z-20 border-t border-gray-800/90 bg-gray-900/95 px-4 py-3 backdrop-blur sm:bottom-[96px] sm:px-6">
+          <div className="shrink-0 border-t border-white/8 bg-white/[0.02] px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-700 bg-gray-800/90 px-3 py-2">
               <div className="text-xs text-gray-400 sm:text-sm">
                 Page <span className="font-semibold text-blue-300">{currentPage}</span> of {totalPages}
@@ -721,7 +720,7 @@ export default function StockSelectorContent() {
         )}
 
         {/* Floating Action Bar */}
-        <div className="border-t border-gray-800 px-4 py-3 sm:px-6 sm:py-4 bg-gray-800/95 backdrop-blur space-y-2 sticky bottom-0 z-20">
+        <div className="shrink-0 space-y-2 border-t border-white/8 bg-[rgba(12,16,27,0.98)] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex gap-2">
             {selectedStocks.length > 0 && (
               <button

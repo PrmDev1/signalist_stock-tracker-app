@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import NotificationAlertsButton from '@/components/NotificationAlertsButton';
 import SearchCommand from '@/components/SearchCommand';
 import SidebarNavbar from '@/components/SidebarNavbar';
 import TopTickerHeader from '@/components/TopTickerHeader';
@@ -43,13 +44,7 @@ export default function MainLayout({ children, user, initialStocks }: MainLayout
                     <SearchCommand renderAs="input" initialStocks={initialStocks} />
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-14 w-14 rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] text-gray-300 transition-all duration-300 hover:border-[#343a52] hover:bg-[#1a1f2f]"
-                  >
-                    <Bell className="h-5 w-5" />
-                  </Button>
+                  <NotificationAlertsButton />
 
                   <div className="hidden min-w-[160px] items-center justify-between rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:flex">
                     <div className="min-w-0">

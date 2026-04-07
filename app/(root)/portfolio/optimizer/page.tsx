@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import PortfolioOptimizer from '@/components/portfolio/PortfolioOptimizer';
 
 export const metadata: Metadata = {
-  title: 'Portfolio Optimizer | Stocks Portfolio',
-  description: 'Optimize your filtered stock selection with AI allocation models',
+  title: 'RoboAdvisor | Stocks Portfolio',
+  description: 'Build a portfolio through a guided RoboAdvisor workflow with optimization and review steps',
 };
 
 export default function PortfolioOptimizerPage() {

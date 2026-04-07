@@ -17,12 +17,12 @@ export default function SelectAssetHeader({
   onFilterToggle,
 }: SelectAssetHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800/50 border-b border-gray-700/50 backdrop-blur-sm">
-      <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
+    <header className="shrink-0 border-b border-white/8 bg-[linear-gradient(180deg,rgba(12,16,27,0.96),rgba(10,14,24,0.92))]">
+      <div className="flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-800/60 rounded-lg transition-all duration-200 flex-shrink-0 hover:scale-110"
+          className="flex-shrink-0 rounded-xl border border-white/8 bg-white/[0.03] p-2 transition-all duration-200 hover:bg-white/[0.07]"
           aria-label="Close"
           title="Back to portfolio"
         >
@@ -31,10 +31,10 @@ export default function SelectAssetHeader({
 
         {/* Title with Gradient */}
         <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300 bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300 bg-clip-text text-transparent sm:text-2xl">
             Select Assets
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+          <p className="mt-0.5 text-xs text-gray-400 sm:text-sm">
             Search and filter stocks to build your portfolio
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function SelectAssetHeader({
         {/* Filter Button with Badge */}
         <button
           onClick={onFilterToggle}
-          className="relative p-2 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 rounded-lg transition-all duration-200 flex-shrink-0 hover:scale-110 group"
+          className="group relative flex-shrink-0 rounded-xl border border-white/8 bg-white/[0.03] p-2 transition-all duration-200 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20"
           aria-label="Open filters"
           title="Open filter panel"
         >
@@ -52,7 +52,7 @@ export default function SelectAssetHeader({
       </div>
 
       {/* Search Bar - Enhanced */}
-      <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-700/30">
+      <div className="border-t border-white/6 px-4 py-4 sm:px-6 sm:py-5">
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
           <input
@@ -60,7 +60,7 @@ export default function SelectAssetHeader({
             placeholder="Search by ticker or company name..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-11 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gradient-to-r from-gray-800/80 to-gray-800/60 border border-gray-700/50 rounded-lg text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/30 focus:from-gray-800 focus:to-gray-750 transition-all duration-200 backdrop-blur-sm"
+            className="w-full rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(20,24,35,0.88),rgba(16,20,30,0.72))] py-3 pl-11 pr-4 text-sm text-white placeholder-gray-500 transition-all duration-200 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:py-3.5 sm:pl-12 sm:text-base"
             aria-label="Search stocks"
           />
           {searchValue && (

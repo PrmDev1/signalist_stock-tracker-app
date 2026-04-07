@@ -19,7 +19,7 @@ import type {
 } from './types';
 import { normalizeCommunityAllocations } from './types';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 6;
 
 const EMPTY_FILTERS: CommunityPortfolioFilterDraft = {
   minReturn: '',
@@ -618,13 +618,7 @@ export default function CommunityPortfolioPage() {
             <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 text-right">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Page status</p>
               <p className="mt-2 text-lg font-semibold text-white">
-                Page {page}
-                {totalPages > 0 ? ` of ${totalPages}` : ''} ·{' '}
-                {loading
-                  ? 'Loading'
-                  : totalCount !== null
-                    ? `${totalCount} portfolios`
-                    : `${items.length} shown`}
+                Page {page} · {loading ? 'Loading' : `${items.length} shown`}
               </p>
             </div>
           </div>

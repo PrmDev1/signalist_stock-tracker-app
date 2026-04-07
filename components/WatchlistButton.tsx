@@ -9,6 +9,8 @@ import { Star, StarIcon, Stars, Trash2 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner'
 
+const WATCHLIST_UPDATED_EVENT = 'watchlist:updated';
+
 // Minimal WatchlistButton implementation to satisfy page requirements.
 // This component focuses on UI contract only. It toggles local state and
 // calls onWatchlistChange if provided. Styling hooks match globals.css.
@@ -23,6 +25,15 @@ const WatchlistButton = ({
 }: WatchlistButtonProps) => {
   const [added, setAdded] = useState<boolean>(!!isInWatchlist);
 
+  const notifyWatchlistUpdated = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.dispatchEvent(new Event(WATCHLIST_UPDATED_EVENT));
+    window.localStorage.setItem(WATCHLIST_UPDATED_EVENT, String(Date.now()));
+  };
+
   useEffect(() => {
     setAdded(!!isInWatchlist);
   }, [isInWatchlist]);
@@ -34,6 +45,7 @@ const WatchlistButton = ({
 
   // Handle adding/removing stocks from watchlist
   const toggleWatchlist = async () => {
+    const nextAddedState = !added;
     const result = added
       ? await removeFromWatchlist(symbol)
       : await addToWatchlist(symbol, company);
@@ -46,8 +58,14 @@ const WatchlistButton = ({
       });
 
       // Notify parent component of watchlist change for state synchronization
-      onWatchlistChange?.(symbol, !added);
+      onWatchlistChange?.(symbol, nextAddedState);
+      setAdded(nextAddedState);
+      notifyWatchlistUpdated();
+      return;
     }
+
+    setAdded(added);
+    toast.error(('error' in result && result.error) ? result.error : 'Failed to update watchlist');
   };
 
   // Debounce the toggle function to prevent rapid API calls (300ms delay)
@@ -59,7 +77,6 @@ const WatchlistButton = ({
     e.stopPropagation();
     e.preventDefault();
 
-    setAdded(!added);
     debouncedToggle();
   };
 

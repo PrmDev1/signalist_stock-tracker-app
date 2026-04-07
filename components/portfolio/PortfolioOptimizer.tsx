@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Sparkles } from 'lucide-react';
 import { startPortfolioOptimization, getPortfolioOptimizationStatus, savePortfolioToDatabase } from '@/lib/actions/cloudflare.actions';
 import {
   type FilteredStock,
@@ -245,7 +245,14 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       presetConfig,
     });
 
+    setFilteredStocksInSession(selectedStocks, activePreset);
+
     router.push(`/portfolio/optimizer/start?preset=${activePreset}`);
+  };
+
+  const handlePresetChange = (nextPreset: PortfolioPreset) => {
+    setPresetConfig(toConfigurationState(getDefaultPresetFormValues(nextPreset)));
+    setFilteredStocksInSession(selectedStocks, nextPreset);
   };
 
   useEffect(() => {
@@ -379,10 +386,10 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   const handleRemoveStock = (symbol: string) => {
     const nextStocks = selectedStocks.filter((stock) => stock.symbol !== symbol);
     setSelectedStocks(nextStocks);
-    setFilteredStocksInSession(nextStocks, resolvedPresetFromQuery);
+    setFilteredStocksInSession(nextStocks, activePreset);
 
     if (nextStocks.length === 0) {
-      router.replace(selectStocksUrl);
+      router.replace(`/portfolio/select-stocks?preset=${activePreset}`);
       return;
     }
 
@@ -403,32 +410,36 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   return (
     <div className="min-h-screen bg-gray-900 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
-          <button
-            type="button"
-            onClick={() => {
-              if (mode === 'results') {
-                router.push(`/portfolio/optimizer?preset=${activePreset}`);
-              } else {
-                router.push(selectStocksUrl);
-              }
-            }}
-            className="mb-4 inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-600"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {mode === 'results' ? 'กลับไปหน้า Parameter' : 'กลับไปหน้าคัดกรองหุ้น'}
-          </button>
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">
-            {mode === 'results' ? 'ผลลัพธ์การจัดพอร์ตด้วย AI' : 'AI จัดพอร์ตอัจฉริยะ'}
-          </h1>
-          <p className="mt-2 text-sm text-gray-400 sm:text-base">
-            {mode === 'results'
-              ? 'หน้านี้แสดงเฉพาะสถานะและผลลัพธ์การจัดพอร์ต'
-              : 'ตั้งค่าพารามิเตอร์ก่อน แล้วกดเริ่มเพื่อไปหน้าผลลัพธ์'}
-          </p>
-          <div className="mt-4 inline-flex items-center rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs font-medium text-teal-400 sm:text-sm">
-            เลือกแล้ว {selectedStocks.length} ตัว
+        <section className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(88,98,255,0.22),transparent_26%),linear-gradient(180deg,rgba(18,22,35,0.96),rgba(10,13,22,0.98))] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.3)] sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                if (mode === 'results') {
+                  router.push(`/portfolio/optimizer?preset=${activePreset}`);
+                } else {
+                  router.push(selectStocksUrl);
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-white/[0.08]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {mode === 'results' ? 'กลับไปหน้า Parameter' : 'กลับไปหน้าคัดกรองหุ้น'}
+            </button>
+
+            <div className="inline-flex items-center gap-2 self-start rounded-full border border-[#7db8ff]/25 bg-[#7db8ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b9d8ff] sm:self-auto">
+              <Sparkles className="h-3.5 w-3.5" />
+              RoboAdvisor
+            </div>
           </div>
+          <h1 className="mt-8 text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+            {mode === 'results' ? 'RoboAdvisor Portfolio Results' : 'Build your portfolio with RoboAdvisor'}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
+            {mode === 'results'
+              ? 'Review the optimization outcome, validate the allocation mix, and save the finished portfolio to your workspace.'
+              : 'Review your selected stocks, configure the RoboAdvisor strategy, and continue when the portfolio settings are ready.'}
+          </p>
         </section>
 
         {!canCreatePortfolio && (
@@ -439,7 +450,12 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
         )}
 
         {mode === 'settings' ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_1fr]">
+          <div className="space-y-6">
+            <PreviewPanel
+              selectedStocks={selectedStocks}
+              onRemoveStock={handleRemoveStock}
+            />
+
             <ParameterPanel
               investmentAmount={investmentAmount}
               setInvestmentAmount={setInvestmentAmount}
@@ -474,15 +490,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
               canRunOptimization={canRunOptimization}
               onOptimize={handleGoToResultsPage}
               onReset={handleResetParameters}
-              onBack={() => router.push(selectStocksUrl)}
-            />
-
-            <PreviewPanel
-              selectedStocks={selectedStocks}
-              riskTolerance={riskTolerance}
-              investmentHorizon={investmentHorizon}
-              modelName={modelName}
-              onRemoveStock={handleRemoveStock}
+              onBack={() => router.push(`/portfolio/select-stocks?preset=${activePreset}`)}
             />
           </div>
         ) : (

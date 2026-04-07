@@ -76,6 +76,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
   const [portfolioName, setPortfolioName] = useState('');
   const [investmentAmount, setInvestmentAmount] = useState('10000');
   const [monthlyDca, setMonthlyDca] = useState('0');
+  const [targetYears, setTargetYears] = useState('10');
   const [detailStep, setDetailStep] = useState<DetailStep>(1);
   const [brokerMinOrder] = useState<number>(5);
   const [previewData, setPreviewData] = useState<PortfolioPreviewResponse | null>(null);
@@ -93,6 +94,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
       const parsed = JSON.parse(stored) as CommunityPortfolioData;
       setSelectedPortfolio(parsed);
       setPortfolioName(`${parsed.mvoId.slice(0, 8).toUpperCase()} Strategy`);
+      setTargetYears(String(Math.min(20, Math.max(1, Number(parsed.lookbackYears || 10)))));
     } catch {
       setSelectedPortfolio(null);
     }
@@ -131,6 +133,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
     const normalizedName = portfolioName.trim();
     const normalizedInitialCapital = Number(investmentAmount);
     const normalizedMonthlyDca = Number(monthlyDca);
+    const normalizedTargetYears = Number(targetYears);
 
     if (!normalizedName) {
       toast.error('Please enter a portfolio name.');
@@ -144,6 +147,11 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
 
     if (!Number.isFinite(normalizedMonthlyDca) || normalizedMonthlyDca < 0) {
       toast.error('Monthly DCA must be 0 or greater.');
+      return;
+    }
+
+    if (!Number.isFinite(normalizedTargetYears) || normalizedTargetYears < 1 || normalizedTargetYears > 20) {
+      toast.error('Target number of years must be between 1 and 20.');
       return;
     }
 
@@ -186,10 +194,15 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
     const normalizedName = portfolioName.trim();
     const normalizedInitialCapital = Number(investmentAmount);
     const normalizedMonthlyDca = Number(monthlyDca);
-    const targetYears = Math.min(20, Math.max(1, Number(selectedPortfolio.lookbackYears || 10)));
+    const normalizedTargetYears = Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)));
 
     if (!previewData?.portfolio || Object.keys(previewData.portfolio.allocations || {}).length < 2) {
       toast.error('Please generate the final portfolio preview before saving.');
+      return;
+    }
+
+    if (!Number.isFinite(normalizedTargetYears) || normalizedTargetYears < 1 || normalizedTargetYears > 20) {
+      toast.error('Target number of years must be between 1 and 20.');
       return;
     }
 
@@ -215,7 +228,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
           mvoHashId: selectedPortfolio.mvoId,
           initialCapital: normalizedInitialCapital,
           monthlyDca: normalizedMonthlyDca,
-          investmentHorizon: targetYears,
+          investmentHorizon: normalizedTargetYears,
         }),
       });
 
@@ -233,7 +246,7 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
         selectedPortfolio.modelName === 'semi' ? 'semi' : 'mvo',
         selectedPortfolio.mvoId,
         normalizedMonthlyDca,
-        targetYears,
+        normalizedTargetYears,
         previewData.backtestAndMetrics,
         previewData.explainability?.riskRewardProfile,
         selectedPortfolio.lookbackYears,
@@ -505,15 +518,34 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                   </div>
                 </div>
 
+                <div>
+                  <label htmlFor="community-target-years" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
+                    <TrendingUp className="h-3.5 w-3.5 text-[#b9d8ff]" />
+                    Target Number of Years
+                  </label>
+                  <Input
+                    id="community-target-years"
+                    type="number"
+                    min={1}
+                    max={20}
+                    step="1"
+                    inputMode="numeric"
+                    value={targetYears}
+                    onChange={(event) => setTargetYears(event.target.value)}
+                    disabled={isPreparingPreview || isCreatingPortfolio}
+                    className="h-11 rounded-2xl border-white/10 bg-black/20 text-white placeholder:text-gray-500"
+                  />
+                </div>
+
                 <div className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
                   <div className="flex items-center justify-between gap-3">
                     <span>Projection setup</span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-200">
-                      {Math.min(20, Math.max(1, Number(selectedPortfolio.lookbackYears || 10)))} year horizon
+                      {Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} year horizon
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-gray-400">
-                    We use your investment amount to request the final portfolio allocation and backtest preview, then use your DCA plan when triggering Monte Carlo for the saved portfolio.
+                    We use your investment amount to request the final portfolio allocation and backtest preview, then submit your initial capital, monthly DCA, and target number of years as the Monte Carlo investment horizon when saving the portfolio.
                   </p>
                 </div>
 
@@ -572,6 +604,10 @@ export default function CommunityPortfolioApplyPage({ mvoId }: CommunityPortfoli
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-gray-500">Monthly DCA</dt>
                       <dd>{formatCurrency(Number(monthlyDca))}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-gray-500">Target years</dt>
+                      <dd>{Math.min(20, Math.max(1, Number(targetYears || selectedPortfolio.lookbackYears || 10)))} years</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-gray-500">Expected annual return</dt>

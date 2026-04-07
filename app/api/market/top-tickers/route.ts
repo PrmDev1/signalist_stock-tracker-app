@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/database/mongoose';
+import { Watchlist } from '@/database/models/watchlist.model';
+import { auth } from '@/lib/better-auth/auth';
+import { getStocksDetails } from '@/lib/actions/finnhub.actions';
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 const FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
-const TICKER_SYMBOLS = ['AAPL', 'TSLA', 'GOOGL', 'META', 'NVDA', 'AMZN'];
-
 interface FinnhubQuoteResponse {
   c?: number;
   dp?: number;
@@ -78,56 +80,69 @@ async function fetchFinnhubSparkline(symbol: string, token: string): Promise<num
   return [];
 }
 
-export async function GET() {
+async function getSessionUser(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  return session?.user ?? null;
+}
+
+export async function GET(request: NextRequest) {
   if (!FINNHUB_API_KEY) {
     return NextResponse.json({ data: [] }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
+  const user = await getSessionUser(request);
+  if (!user) {
+    return NextResponse.json({ data: [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  await connectToDatabase();
+
+  const watchlist = await Watchlist.find({ userId: user.id }, { symbol: 1 })
+    .sort({ addedAt: -1 })
+    .lean();
+
+  const symbols = watchlist
+    .map((item) => String(item.symbol || '').trim().toUpperCase())
+    .filter(Boolean);
+
+  if (symbols.length === 0) {
+    return NextResponse.json({ data: [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   const data = await Promise.all(
-    TICKER_SYMBOLS.map(async (symbol) => {
-      const [quoteResult, profileResult, sparklineResult] = await Promise.allSettled([
-        fetchJson<FinnhubQuoteResponse>(
-          `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`
-        ),
-        fetchJson<FinnhubProfileResponse>(
-          `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`
-        ),
+    symbols.map(async (symbol) => {
+      const [detailsResult, sparklineResult] = await Promise.allSettled([
+        getStocksDetails(symbol),
         fetchFinnhubSparkline(symbol, FINNHUB_API_KEY),
       ]);
 
-      if (quoteResult.status !== 'fulfilled') {
+      if (detailsResult.status !== 'fulfilled') {
         return null;
       }
 
-      const quote = quoteResult.value;
-      const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
-      const finnhubSparkline = sparklineResult.status === 'fulfilled' ? sparklineResult.value : [];
-
-      const priceCandidate = Number(quote.c ?? quote.pc);
+      const stock = detailsResult.value;
+      const priceCandidate = Number(stock.currentPrice);
 
       if (!Number.isFinite(priceCandidate) || priceCandidate <= 0) {
         return null;
       }
 
-      const finnhubChange = Number(quote.dp);
+      const changePercent = Number(stock.changePercent);
+      const finnhubSparkline = sparklineResult.status === 'fulfilled' ? sparklineResult.value : [];
       const sparkline =
         finnhubSparkline.length > 1
           ? finnhubSparkline
           : buildFallbackSparkline(
               priceCandidate,
-              Number.isFinite(finnhubChange) ? finnhubChange : 0
+              Number.isFinite(changePercent) ? changePercent : 0
             );
-
-      if (sparkline.length < 2) {
-        return null;
-      }
 
       return {
         symbol,
-        companyName: profile?.name || symbol,
+        companyName: stock.company || symbol,
         price: priceCandidate,
-        changePercent: Number.isFinite(finnhubChange) ? finnhubChange : 0,
-        logoUrl: profile?.logo || null,
+        changePercent: Number.isFinite(changePercent) ? changePercent : 0,
+        logoUrl: stock.logo || null,
         sparkline,
       } satisfies TopTickerPayload;
     })
@@ -137,6 +152,6 @@ export async function GET() {
 
   return NextResponse.json(
     { data: liveData },
-    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+    { headers: { 'Cache-Control': 'private, no-store' } }
   );
 }

@@ -138,7 +138,7 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
   }, [allocationPayload, customMethod, lookbackYears, onChange, span]);
 
   return (
-    <section className="mt-5 space-y-4 rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/35 via-gray-900 to-gray-900 p-4 sm:p-5">
+    <section className="space-y-4 rounded-[24px] border border-[#4d73ff]/20 bg-[linear-gradient(180deg,rgba(30,37,64,0.8),rgba(16,20,31,0.98))] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-500/40 bg-violet-500/10">
@@ -149,7 +149,7 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
             <p className="text-xs text-violet-200/80">สายอิสระ ปรับพารามิเตอร์ได้เต็มที่</p>
           </div>
         </div>
-        <span className="rounded-md border border-violet-300/40 bg-violet-400/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-200">
+        <span className="rounded-full border border-violet-300/30 bg-violet-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-200">
           pro
         </span>
       </div>
@@ -198,7 +198,7 @@ export default function CustomConfig({ value, onChange, availableTagAllocations 
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-700 bg-gray-900/70 p-3">
+      <div className="rounded-[20px] border border-white/10 bg-[#1b1f29] p-4">
         <button
           type="button"
           onClick={() => setShowAdvanced((prev) => !prev)}

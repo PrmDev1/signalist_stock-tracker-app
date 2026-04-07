@@ -48,16 +48,16 @@ export default function ResultsPanel({
       )}
 
       {status === 'PROCESSING' && (
-        <section className="rounded-xl border border-blue-500/40 bg-blue-600/10 px-4 py-5 text-center text-gray-100">
-          <p className="text-lg font-semibold">ระบบกำลังวิเคราะห์และจัดพอร์ตให้คุณ...</p>
+        <section className="rounded-[28px] border border-blue-500/30 bg-blue-600/10 px-4 py-6 text-center text-gray-100">
+          <p className="text-lg font-semibold">RoboAdvisor is analyzing your portfolio...</p>
           {reqId && <p className="mt-2 break-all font-mono text-xs text-gray-300">รหัสคำขอ: {reqId}</p>}
         </section>
       )}
 
       {status === 'READY' && result && (
-        <section className="space-y-6 rounded-2xl border border-gray-700 bg-gray-800 p-5 sm:p-6">
+        <section className="space-y-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,22,35,0.96),rgba(11,15,24,0.98))] p-5 shadow-[0_22px_80px_rgba(0,0,0,0.25)] sm:p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-white sm:text-2xl">ผลลัพธ์การจัดพอร์ต</h2>
+            <h2 className="text-xl font-semibold text-white sm:text-2xl">RoboAdvisor results</h2>
             {modelUsed && (
               <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
                 โมเดล: {modelUsed.toUpperCase()}

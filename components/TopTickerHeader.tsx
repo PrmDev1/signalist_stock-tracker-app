@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+const WATCHLIST_UPDATED_EVENT = 'watchlist:updated';
+
 interface TopTickerItem {
   symbol: string;
   companyName: string;
@@ -121,12 +123,26 @@ export default function TopTickerHeader() {
       }
     };
 
+    const handleWatchlistRefresh = () => {
+      void fetchTickers();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === WATCHLIST_UPDATED_EVENT) {
+        void fetchTickers();
+      }
+    };
+
     fetchTickers();
     const intervalId = window.setInterval(fetchTickers, 120000);
+    window.addEventListener(WATCHLIST_UPDATED_EVENT, handleWatchlistRefresh);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
       active = false;
       window.clearInterval(intervalId);
+      window.removeEventListener(WATCHLIST_UPDATED_EVENT, handleWatchlistRefresh);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
@@ -148,7 +164,7 @@ export default function TopTickerHeader() {
             </div>
           ) : hasLoaded ? (
             <div className="flex h-full items-center px-4 text-xs text-gray-500">
-              Live ticker feed is temporarily unavailable.
+              Add stocks to your watchlist to populate the ticker header.
             </div>
           ) : (
             <div className="flex items-center overflow-x-auto tv-scrollbar">

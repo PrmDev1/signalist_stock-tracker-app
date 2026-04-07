@@ -92,13 +92,15 @@ export default function FilterPanelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#07080f] flex flex-col">
+    <div className="absolute inset-0 z-30 overflow-y-auto bg-[linear-gradient(180deg,rgba(5,8,16,0.94),rgba(4,6,12,0.98))] backdrop-blur-md tv-scrollbar">
+      <div className="flex min-h-full w-full items-stretch justify-center">
+        <div className="flex min-h-full w-full flex-col bg-[linear-gradient(180deg,rgba(10,12,20,0.98),rgba(7,8,15,0.98))]">
       {/* ── HEADER ── */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4 sm:px-6">
+      <div className="flex items-center gap-3 border-b border-white/6 px-4 pb-4 pt-6 sm:px-6 sm:pt-7">
         {drillSector ? (
           <button
             onClick={() => setDrillSector(null)}
-            className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+            className="-ml-2 flex-shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
             aria-label="Back"
           >
             <ArrowLeft className="w-6 h-6 text-white" />
@@ -111,13 +113,13 @@ export default function FilterPanelModal({
               {displaySectorName(drillSector.officeSector)}
             </h1>
           ) : (
-            <h1 className="text-3xl font-bold text-white">Sectors</h1>
+            <h1 className="text-2xl font-bold text-white sm:text-3xl">Sectors</h1>
           )}
         </div>
 
         <button
           onClick={() => { setDrillSector(null); onClose(); }}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+          className="flex-shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
           aria-label="Close"
         >
           <X className="w-6 h-6 text-gray-400" />
@@ -125,7 +127,7 @@ export default function FilterPanelModal({
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="pb-4">
         {drillSector ? (
           /* ── Industry drill-down ── */
           <div>
@@ -320,7 +322,7 @@ export default function FilterPanelModal({
       </div>
 
       {/* ── FOOTER ── */}
-      <div className="border-t border-white/10 px-4 py-4 sm:px-6 bg-[#07080f]">
+      <div className="shrink-0 border-t border-white/10 bg-[rgba(8,10,17,0.98)] px-4 py-4 sm:px-6">
         {drillSector ? (
           <div className="flex gap-3">
             <button
@@ -352,6 +354,8 @@ export default function FilterPanelModal({
             </button>
           </div>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );
