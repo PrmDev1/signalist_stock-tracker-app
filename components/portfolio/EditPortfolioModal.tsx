@@ -457,6 +457,7 @@ export default function EditPortfolioModal({ portfolio, onSave }: EditPortfolioM
           className="rounded-xl border border-[#2c3d59] bg-[#0d1626]/85 text-[#8dc2ff] shadow-[0_10px_25px_rgba(8,15,30,0.35)] transition-all hover:border-[#4d8bff] hover:bg-[#12203a] hover:text-white"
           title={`Edit ${portfolio.name}`}
           aria-label={`Edit ${portfolio.name}`}
+          suppressHydrationWarning
         >
           <Pencil className="h-4 w-4" />
         </Button>

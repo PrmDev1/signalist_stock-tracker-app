@@ -497,7 +497,6 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
           <ResultsPanel
             status={status}
             errorMsg={errorMsg}
-            reqId={reqId}
             result={result}
             modelUsed={modelUsed}
             backtestAndMetrics={backtestAndMetrics}

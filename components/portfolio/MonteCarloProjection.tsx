@@ -359,6 +359,7 @@ export default function MonteCarloProjection({
           <button
             type="button"
             onClick={() => setSelectedScenario('expected')}
+            suppressHydrationWarning
             className={`rounded-md px-3 py-1.5 ${
               selectedScenario === 'expected' ? 'bg-[#13233c] text-[#8bc8ff]' : 'text-gray-400'
             }`}
@@ -368,6 +369,7 @@ export default function MonteCarloProjection({
           <button
             type="button"
             onClick={() => setSelectedScenario('worst')}
+            suppressHydrationWarning
             className={`rounded-md px-3 py-1.5 ${
               selectedScenario === 'worst' ? 'bg-[#2a1820] text-[#ff8e8e]' : 'text-gray-400'
             }`}
@@ -399,7 +401,7 @@ export default function MonteCarloProjection({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">การดึงกลับสูงสุด</span>
+                <span className="text-gray-400">ขาดทุนสูงสุด</span>
                 <span className="font-semibold text-[#ff5b5b]">-{formatPercent(Math.abs(readWorstDrop(selectedSummary)))}</span>
               </div>
             </div>

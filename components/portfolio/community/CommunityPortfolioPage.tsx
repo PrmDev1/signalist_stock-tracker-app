@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Activity, ArrowLeft, ArrowRight, BarChart3, Bot, DollarSign, Loader2, PiggyBank, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -179,6 +179,12 @@ function isCommunityPortfolioResponse(payload: unknown): payload is CommunityPor
   return !!payload && typeof payload === 'object' && 'data' in payload && Array.isArray((payload as CommunityPortfolioResponse).data);
 }
 
+function haveSamePortfolioOrder(left: CommunityPortfolioData[], right: CommunityPortfolioData[]): boolean {
+  if (left.length !== right.length) return false;
+
+  return left.every((item, index) => item.mvoId === right[index]?.mvoId);
+}
+
 function LoadingCard() {
   return (
     <div className="overflow-hidden rounded-[28px] border border-white/8 bg-white/5 p-5">
@@ -254,6 +260,7 @@ export default function CommunityPortfolioPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
   const [isCreatingPortfolio, setIsCreatingPortfolio] = useState<boolean>(false);
+  const pageCacheRef = useRef<Record<number, CommunityPortfolioData[]>>({});
 
   useEffect(() => {
     const nextDraft = readDraftFromSearchParams(parsedSearchParams);
@@ -298,11 +305,59 @@ export default function CommunityPortfolioPage() {
                   throw new Error(nextError || 'ไม่สามารถโหลดพอร์ตชุมชนได้');
         }
 
-        const nextItems = isCommunityPortfolioResponse(payload) ? payload.data : [];
+        let nextItems = isCommunityPortfolioResponse(payload) ? payload.data : [];
+        let nextTotalCount =
+          isCommunityPortfolioResponse(payload) && typeof payload.total === 'number' ? payload.total : null;
+
+        const cachedFirstPage = pageCacheRef.current[1];
+        const shouldUseExpandedPageFallback =
+          appliedQuery.page > 1 &&
+          nextItems.length > 0 &&
+          Array.isArray(cachedFirstPage) &&
+          cachedFirstPage.length > 0 &&
+          haveSamePortfolioOrder(nextItems, cachedFirstPage);
+
+        if (shouldUseExpandedPageFallback) {
+          const expandedParams = buildApiSearchParams({
+            ...appliedQuery,
+            page: 1,
+            size: appliedQuery.page * PAGE_SIZE,
+          }).toString();
+
+          const expandedResponse = await fetch(`/api/v1/portfolio/community/presets?${expandedParams}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+
+          const expandedPayload = (await expandedResponse.json().catch(() => ({}))) as unknown;
+
+          if (!expandedResponse.ok) {
+            const nextError =
+              expandedPayload && typeof expandedPayload === 'object' && 'error' in expandedPayload
+                ? (expandedPayload as { error?: string }).error
+                : expandedPayload && typeof expandedPayload === 'object' && 'detail' in expandedPayload
+                  ? (expandedPayload as { detail?: string }).detail
+                  : 'ไม่สามารถโหลดพอร์ตชุมชนได้';
+
+            throw new Error(nextError || 'ไม่สามารถโหลดพอร์ตชุมชนได้');
+          }
+
+          const expandedItems = isCommunityPortfolioResponse(expandedPayload) ? expandedPayload.data : [];
+          const startIndex = (appliedQuery.page - 1) * PAGE_SIZE;
+          const pagedItems = expandedItems.slice(startIndex, startIndex + PAGE_SIZE);
+
+          if (pagedItems.length > 0) {
+            nextItems = pagedItems;
+            nextTotalCount =
+              isCommunityPortfolioResponse(expandedPayload) && typeof expandedPayload.total === 'number'
+                ? expandedPayload.total
+                : nextTotalCount;
+          }
+        }
+
+        pageCacheRef.current[appliedQuery.page] = nextItems;
         setItems(nextItems);
-        setTotalCount(
-          isCommunityPortfolioResponse(payload) && typeof payload.total === 'number' ? payload.total : null
-        );
+        setTotalCount(nextTotalCount);
       } catch (fetchError) {
         if (controller.signal.aborted) return;
 

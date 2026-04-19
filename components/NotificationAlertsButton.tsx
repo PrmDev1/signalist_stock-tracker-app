@@ -92,6 +92,7 @@ export default function NotificationAlertsButton() {
           variant="ghost"
           className="relative h-14 w-14 rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] text-gray-300 transition-all duration-300 hover:border-[#343a52] hover:bg-[#1a1f2f]"
           aria-label="Open alert notifications"
+          suppressHydrationWarning
         >
           <Bell className="h-5 w-5" />
           {activeAlerts.length > 0 ? (

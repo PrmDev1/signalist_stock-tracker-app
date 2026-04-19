@@ -54,7 +54,6 @@ export interface PreviewPanelProps {
 export interface ResultsPanelProps {
   status: 'IDLE' | 'PROCESSING' | 'READY' | 'FAILED';
   errorMsg: string | null;
-  reqId: string | null;
   result: PortfolioResult | null;
   modelUsed: string | null;
   backtestAndMetrics?: BacktestAndMetrics | null;

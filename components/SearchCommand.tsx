@@ -105,6 +105,7 @@ export default function SearchCommand({
               setOpen(true);
             }
           }}
+          suppressHydrationWarning
           className="group flex h-14 w-full items-center gap-3 rounded-[18px] border border-[#24283a] bg-[linear-gradient(180deg,#181b2a_0%,#131725_100%)] px-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300 hover:border-[#343a52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
         >
           <Search className="h-4 w-4 shrink-0 text-gray-500 transition-colors duration-300 group-hover:text-gray-300" />
@@ -113,6 +114,7 @@ export default function SearchCommand({
             value=""
             onFocus={() => setOpen(true)}
             placeholder="ค้นหาหุ้นที่ต้องการ..."
+            suppressHydrationWarning
             className="pointer-events-none h-full w-full bg-transparent text-[15px] text-white placeholder:text-[#7c839a] focus:outline-none"
             aria-label="ค้นหาหุ้น"
           />

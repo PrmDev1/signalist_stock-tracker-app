@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -14,6 +14,23 @@ interface InfoPopoverProps {
 
 export default function InfoPopover({ title = "คำอธิบาย", description }: InfoPopoverProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <span
+        className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-500/60 bg-gray-700/60 text-[10px] font-semibold text-gray-300"
+        aria-hidden="true"
+        suppressHydrationWarning
+      >
+        i
+      </span>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -25,6 +42,7 @@ export default function InfoPopover({ title = "คำอธิบาย", descri
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onClick={() => setOpen((prev) => !prev)}
+          suppressHydrationWarning
         >
           i
         </button>

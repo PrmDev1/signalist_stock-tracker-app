@@ -202,7 +202,6 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
           </div>
 
           <div className="min-w-0 rounded-[24px] border border-[#1f2a3d] bg-[#070b13] p-3 sm:p-4">
-            <h3 className="mb-2 text-sm font-semibold text-white">สัดส่วนการลงทุน</h3>
             <PortfolioAllocationChart
               expectedReturns={explainability?.expectedReturns}
               volatilityRisk={explainability?.volatilityRisk}

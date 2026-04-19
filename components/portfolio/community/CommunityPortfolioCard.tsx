@@ -10,6 +10,7 @@ interface CommunityPortfolioCardProps {
 }
 
 const SEGMENT_COLORS = ['#7db8ff', '#0fedbe', '#5862ff', '#fdd458', '#ff8243'];
+const OTHER_SEGMENT_COLOR = '#bbc6d7';
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -55,7 +56,38 @@ function getSharpeTone(sharpeRatio: number): string {
 }
 
 export default function CommunityPortfolioCard({ portfolio, onViewDetails }: CommunityPortfolioCardProps) {
-  const topAllocations = normalizeCommunityAllocations(portfolio.allocations).slice(0, 3);
+  const allocations = normalizeCommunityAllocations(portfolio.allocations);
+  const totalWeight = allocations.reduce((sum, entry) => sum + entry.weight, 0);
+  const safeTotalWeight = totalWeight > 0 ? totalWeight : 1;
+  const topAllocations = allocations.slice(0, 3).map((entry) => ({
+    ...entry,
+    normalizedWeight: entry.weight / safeTotalWeight,
+  }));
+  const otherWeight = Math.max(0, 1 - topAllocations.reduce((sum, entry) => sum + entry.normalizedWeight, 0));
+  const allocationSegments = otherWeight > 0.001
+    ? [
+        ...topAllocations.map((entry, index) => ({
+          key: entry.ticker,
+          label: entry.ticker,
+          weight: entry.normalizedWeight,
+          color: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+          isOther: false,
+        })),
+        {
+          key: 'OTHER',
+          label: 'อื่น ๆ',
+          weight: otherWeight,
+          color: OTHER_SEGMENT_COLOR,
+          isOther: true,
+        },
+      ]
+    : topAllocations.map((entry, index) => ({
+        key: entry.ticker,
+        label: entry.ticker,
+        weight: entry.normalizedWeight,
+        color: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+        isOther: false,
+      }));
   const riskLevelLabel = formatRiskLevel(portfolio.riskLv);
 
   return (
@@ -110,30 +142,31 @@ export default function CommunityPortfolioCard({ portfolio, onViewDetails }: Com
         </div>
 
         <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-white/5">
-          {topAllocations.map(({ ticker, weight }, index) => (
+          {allocationSegments.map(({ key, weight, color }) => (
             <div
-              key={ticker}
+              key={key}
               className="h-full"
               style={{
-                width: `${Math.max(weight * 100, 8)}%`,
-                backgroundColor: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+                width: `${Math.max(weight * 100, 0)}%`,
+                backgroundColor: color,
               }}
             />
           ))}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {topAllocations.map(({ ticker, weight }, index) => (
+          {allocationSegments.map(({ key, label, weight, color, isOther }) => (
             <span
-              key={ticker}
+              key={key}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-xs text-gray-200"
             >
               <span
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: SEGMENT_COLORS[index % SEGMENT_COLORS.length] }}
+                style={{ backgroundColor: color }}
               />
-              {ticker}
+              {label}
               <span className="text-gray-400">{formatPercent(weight)}</span>
+              {isOther ? <span className="text-gray-500">(รวมหุ้นที่เหลือ)</span> : null}
             </span>
           ))}
         </div>

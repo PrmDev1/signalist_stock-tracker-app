@@ -23,7 +23,6 @@ function formatChartData(allocations: Record<string, { weight: number; allocated
 export default function ResultsPanel({
   status,
   errorMsg,
-  reqId,
   result,
   modelUsed,
   backtestAndMetrics,
@@ -50,7 +49,6 @@ export default function ResultsPanel({
       {status === 'PROCESSING' && (
         <section className="rounded-[28px] border border-blue-500/30 bg-blue-600/10 px-4 py-6 text-center text-gray-100">
           <p className="text-lg font-semibold">RoboAdvisor is analyzing your portfolio...</p>
-          {reqId && <p className="mt-2 break-all font-mono text-xs text-gray-300">รหัสคำขอ: {reqId}</p>}
         </section>
       )}
 
