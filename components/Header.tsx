@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
+import RoboAdvisorChat from '@/components/portfolio/RoboAdvisorChat';
 import UserDropdown from '@/components/UserDropdown';
 import { searchStocks } from '@/lib/actions/finnhub.actions';
 
@@ -15,7 +16,10 @@ const Header = async ({ user }: { user: User }) => {
                 </Link>
                 <Navbar initialStocks={initialStocks} />
 
-                <UserDropdown user={user} initialStocks={initialStocks} />
+                <div className="ml-auto flex items-center gap-3">
+                    <RoboAdvisorChat />
+                    <UserDropdown user={user} initialStocks={initialStocks} />
+                </div>
             </div>
         </header>
     )

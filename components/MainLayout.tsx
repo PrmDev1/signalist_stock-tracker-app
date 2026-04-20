@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import NotificationAlertsButton from '@/components/NotificationAlertsButton';
+import RoboAdvisorChat from '@/components/portfolio/RoboAdvisorChat';
 import SearchCommand from '@/components/SearchCommand';
 import SidebarNavbar from '@/components/SidebarNavbar';
 import TopTickerHeader from '@/components/TopTickerHeader';
-import { Button } from '@/components/ui/button';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -56,6 +56,8 @@ export default function MainLayout({ children, user, initialStocks }: MainLayout
           <main className="flex-1 px-4 py-6 sm:px-5 lg:px-6 lg:py-8">
             <div className="mx-auto w-full max-w-[1600px]">{children}</div>
           </main>
+
+          <RoboAdvisorChat />
         </div>
       </div>
     </div>
