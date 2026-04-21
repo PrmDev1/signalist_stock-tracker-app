@@ -9,6 +9,7 @@ export interface FilteredStock {
 }
 
 export const FILTERED_STOCKS_STORAGE_KEY = 'portfolioFilteredStocks';
+export const ROBOCHAT_HANDOFF_STORAGE_KEY = 'robochatOptimizerStocks';
 
 function getPresetStorageKey(preset?: string) {
   if (!preset) return FILTERED_STOCKS_STORAGE_KEY;
@@ -72,4 +73,42 @@ export function getFilteredStocksFromSession(preset?: string): FilteredStock[] {
   } catch {
     return [];
   }
+}
+
+export function setRoboChatStocksInSession(stocks: FilteredStock[]): void {
+  if (typeof window === 'undefined') return;
+  const uniqueStocks = dedupeFilteredStocks(stocks);
+  sessionStorage.setItem(ROBOCHAT_HANDOFF_STORAGE_KEY, JSON.stringify(uniqueStocks));
+}
+
+export function getRoboChatStocksFromSession(): FilteredStock[] {
+  if (typeof window === 'undefined') return [];
+
+  const raw = sessionStorage.getItem(ROBOCHAT_HANDOFF_STORAGE_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as FilteredStock[];
+    if (!Array.isArray(parsed)) return [];
+
+    const validStocks = parsed.filter((stock) => {
+      return (
+        typeof stock?.symbol === 'string' &&
+        stock.symbol.length > 0 &&
+        typeof stock?.name === 'string' &&
+        typeof stock?.sector === 'string' &&
+        typeof stock?.marketCap === 'number' &&
+        (typeof stock?.tag === 'undefined' || typeof stock?.tag === 'string')
+      );
+    });
+
+    return dedupeFilteredStocks(validStocks);
+  } catch {
+    return [];
+  }
+}
+
+export function clearRoboChatStocksFromSession(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(ROBOCHAT_HANDOFF_STORAGE_KEY);
 }

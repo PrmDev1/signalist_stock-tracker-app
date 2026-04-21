@@ -2,11 +2,14 @@
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, Sparkles } from 'lucide-react';
+import { ChevronLeft, Loader2, Sparkles } from 'lucide-react';
 import { startPortfolioOptimization, getPortfolioOptimizationStatus, savePortfolioToDatabase } from '@/lib/actions/cloudflare.actions';
+import { type CompanyProfile, getPortfolioTickers } from '@/lib/actions/portfolio.actions';
 import {
+  clearRoboChatStocksFromSession,
   type FilteredStock,
   getFilteredStocksFromSession,
+  getRoboChatStocksFromSession,
   setFilteredStocksInSession,
 } from '@/lib/portfolio-filtered-stocks';
 import {
@@ -43,10 +46,69 @@ interface PortfolioOptimizerProps {
   mode?: 'settings' | 'results';
 }
 
+const ROBOCHAT_PLACEHOLDER_SECTOR = 'RoboChat Selection';
+
+function normalizeTickerList(tickers: string[]): string[] {
+  return Array.from(
+    new Set(
+      tickers
+        .map((ticker) => ticker.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  );
+}
+
+function extractTickersFromFilteredStocks(stocks: FilteredStock[]): string[] {
+  return normalizeTickerList(stocks.map((stock) => stock.symbol));
+}
+
+function requiresStockHydration(stocks: FilteredStock[]): boolean {
+  return stocks.some((stock) => {
+    const normalizedSector = String(stock.sector ?? '').trim();
+    const hasPriceData = Number.isFinite(stock.latestPrice) || Number.isFinite(stock.dayChangePercent);
+
+    return normalizedSector === ROBOCHAT_PLACEHOLDER_SECTOR || (!normalizedSector || normalizedSector === '-') || !hasPriceData;
+  });
+}
+
+function mapCompanyProfileToFilteredStock(stock: CompanyProfile): FilteredStock {
+  const latestPrice = Number.isFinite(stock.latestPrice) ? Number(stock.latestPrice) : undefined;
+  const yesterdayPrice = Number.isFinite(stock.yesterdayPrice) ? Number(stock.yesterdayPrice) : undefined;
+  const dayChangePercent =
+    Number.isFinite(latestPrice) && Number.isFinite(yesterdayPrice) && Number(yesterdayPrice) > 0
+      ? ((Number(latestPrice) - Number(yesterdayPrice)) / Number(yesterdayPrice)) * 100
+      : undefined;
+
+  return {
+    symbol: String(stock.ticker ?? '').trim().toUpperCase(),
+    name: String(stock.companyName ?? stock.ticker ?? '').trim(),
+    sector: String(stock.sector ?? '').trim() || '-',
+    marketCap: 0,
+    tag: typeof stock.sectorPerformanceTier === 'string' ? stock.sectorPerformanceTier.trim().toLowerCase() : undefined,
+    latestPrice,
+    dayChangePercent,
+  };
+}
+
+function buildFallbackFilteredStocks(tickers: string[], stocksByTicker: Map<string, FilteredStock>): FilteredStock[] {
+  return tickers.map((ticker) => {
+    const existing = stocksByTicker.get(ticker);
+    if (existing) return existing;
+
+    return {
+      symbol: ticker,
+      name: ticker,
+      sector: '-',
+      marketCap: 0,
+    };
+  });
+}
+
 export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptimizerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetQuery = searchParams.get('preset');
+  const handoffTickersQuery = searchParams.get('tickers');
   const resolvedPresetFromQuery: PortfolioPreset =
     presetQuery === 'growth' ||
     presetQuery === 'dividend' ||
@@ -60,6 +122,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
 
   const [selectedStocks, setSelectedStocks] = useState<FilteredStock[]>([]);
   const [isSelectionReady, setIsSelectionReady] = useState(false);
+  const [selectionLoadingMessage, setSelectionLoadingMessage] = useState('กำลังโหลดรายการหุ้น...');
   const [investmentAmount, setInvestmentAmount] = useState<number>(10000);
   const [monthlyDca, setMonthlyDca] = useState<number>(0);
   const [targetYears, setTargetYears] = useState<number>(10);
@@ -118,16 +181,108 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     targetYears <= 20;
 
   useEffect(() => {
-    const stocksFromFilter = getFilteredStocksFromSession(resolvedPresetFromQuery);
+    let isCancelled = false;
 
-    if (stocksFromFilter.length === 0) {
-      router.replace(selectStocksUrl);
-      return;
-    }
+    const initializeSelection = async () => {
+      const stocksFromFilter = getFilteredStocksFromSession(resolvedPresetFromQuery);
+      const roboChatHandoffStocks = getRoboChatStocksFromSession();
+      const queryTickers = normalizeTickerList((handoffTickersQuery ?? '').split(','));
+      const handoffTickers = extractTickersFromFilteredStocks(roboChatHandoffStocks);
+      const storedTickers = extractTickersFromFilteredStocks(stocksFromFilter);
 
-    setSelectedStocks(stocksFromFilter);
-    setIsSelectionReady(true);
-  }, [router, selectStocksUrl]);
+      const shouldHydrateStoredStocks = stocksFromFilter.length > 0 && requiresStockHydration(stocksFromFilter);
+      const pendingHydrationTickers =
+        queryTickers.length > 0
+          ? queryTickers
+          : handoffTickers.length > 0
+            ? handoffTickers
+            : shouldHydrateStoredStocks
+              ? storedTickers
+              : [];
+
+      if (stocksFromFilter.length > 0 && pendingHydrationTickers.length === 0) {
+        if (isCancelled) return;
+        setErrorMsg(null);
+        setSelectedStocks(stocksFromFilter);
+        setIsSelectionReady(true);
+        return;
+      }
+
+      if (pendingHydrationTickers.length === 0) {
+        router.replace(selectStocksUrl);
+        return;
+      }
+
+      setSelectionLoadingMessage('กำลังดึงข้อมูลราคาหุ้นล่าสุดและข้อมูลบริษัท...');
+
+      try {
+        const responses = await Promise.all(
+          pendingHydrationTickers.map(async (ticker) => {
+            const response = await getPortfolioTickers(1, 20, { search: ticker });
+            if (!response.success || !response.tickers) return null;
+
+            return response.tickers.find((stock) => String(stock.ticker ?? '').trim().toUpperCase() === ticker) ?? null;
+          })
+        );
+
+        if (isCancelled) return;
+
+        const hydratedStocks = responses.filter((stock): stock is CompanyProfile => stock !== null).map(mapCompanyProfileToFilteredStock);
+        const fallbackStockMap = new Map<string, FilteredStock>([
+          ...stocksFromFilter.map((stock) => [stock.symbol.trim().toUpperCase(), stock] as const),
+          ...roboChatHandoffStocks.map((stock) => [stock.symbol.trim().toUpperCase(), stock] as const),
+        ]);
+
+        const nextStocks = buildFallbackFilteredStocks(
+          pendingHydrationTickers,
+          new Map<string, FilteredStock>([
+            ...fallbackStockMap,
+            ...hydratedStocks.map((stock) => [stock.symbol, stock] as const),
+          ])
+        );
+
+        setFilteredStocksInSession(nextStocks, resolvedPresetFromQuery);
+        clearRoboChatStocksFromSession();
+        setErrorMsg(null);
+        setSelectedStocks(nextStocks);
+        setIsSelectionReady(true);
+
+        const hydratedCount = hydratedStocks.length;
+        if (hydratedCount < pendingHydrationTickers.length) {
+          setStatus('FAILED');
+          setErrorMsg('โหลดข้อมูลหุ้นได้ไม่ครบทุกตัว ข้อมูลบางแถวอาจยังไม่สมบูรณ์');
+        }
+      } catch (error) {
+        if (isCancelled) return;
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setErrorMsg('ไม่สามารถโหลดข้อมูลหุ้นล่าสุดได้: ' + errorMessage);
+        setStatus('FAILED');
+
+        const fallbackTickers = pendingHydrationTickers;
+        const fallbackStockMap = new Map<string, FilteredStock>([
+          ...stocksFromFilter.map((stock) => [stock.symbol.trim().toUpperCase(), stock] as const),
+          ...roboChatHandoffStocks.map((stock) => [stock.symbol.trim().toUpperCase(), stock] as const),
+        ]);
+
+        const sanitizedFallbackStocks = buildFallbackFilteredStocks(fallbackTickers, fallbackStockMap).map((stock) => ({
+          ...stock,
+          sector: stock.sector === ROBOCHAT_PLACEHOLDER_SECTOR ? '-' : stock.sector,
+        }));
+
+        setFilteredStocksInSession(sanitizedFallbackStocks, resolvedPresetFromQuery);
+        clearRoboChatStocksFromSession();
+        setSelectedStocks(sanitizedFallbackStocks);
+        setIsSelectionReady(true);
+      }
+    };
+
+    void initializeSelection();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [handoffTickersQuery, resolvedPresetFromQuery, router, selectStocksUrl]);
 
   useEffect(() => {
     if (mode !== 'results' || !isSelectionReady) return;
@@ -400,7 +555,14 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   };
 
   if (!isSelectionReady) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-300">กำลังโหลดรายการหุ้น...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
+        <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 text-gray-200 shadow-[0_18px_50px_rgba(0,0,0,0.25)]">
+          <Loader2 className="h-5 w-5 animate-spin text-[#7db8ff]" />
+          <span>{selectionLoadingMessage}</span>
+        </div>
+      </div>
+    );
   }
 
   if (mode === 'results' && !isResultParamsReady) {

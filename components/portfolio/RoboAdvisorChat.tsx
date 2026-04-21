@@ -3,8 +3,10 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bot, Loader2, RefreshCcw, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bot, CheckCircle2, Loader2, PieChart, RefreshCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { setRoboChatStocksInSession, type FilteredStock } from '@/lib/portfolio-filtered-stocks';
 import { getFactorLabel, getScoreLevel, getTotalRatingLabel, type FactorType } from '@/lib/score-utils';
 import { cn } from '@/lib/utils';
 
@@ -80,6 +82,7 @@ interface MacroMetric {
 }
 
 const SYSTEM_DEFAULT_VALUE = 'system-default';
+const ROBO_WELCOME_STORAGE_KEY = 'roboWelcomeSeen';
 const INITIAL_REGIME = 'Recovery / Moderate Growth';
 const INITIAL_REGIME_THAI = 'สภาวะฟื้นตัว / เติบโตปานกลาง';
 const INITIAL_REGIME_DURATION = 25;
@@ -185,6 +188,86 @@ function formatNumericScore(value?: number): string {
 	return Number(value).toFixed(2);
 }
 
+function toOptimizerHandoffStocks(stocks: SmartScreenStock[]): FilteredStock[] {
+	const dedupedStocks = new Map<string, FilteredStock>();
+
+	for (const stock of stocks) {
+		const symbol = String(stock.symbol || stock.ticker || '').trim().toUpperCase();
+		if (!symbol) continue;
+
+		dedupedStocks.set(symbol, {
+			symbol,
+			name: String(stock.companyName || symbol).trim(),
+			sector: 'RoboChat Selection',
+			marketCap: 0,
+		});
+	}
+
+	return Array.from(dedupedStocks.values());
+}
+
+function OptimizePortfolioHandoff({ stocks }: { stocks: SmartScreenStock[] }) {
+	const router = useRouter();
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [handoffStatus, setHandoffStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+	const handoffStocks = toOptimizerHandoffStocks(stocks);
+
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+		};
+	}, []);
+
+	if (handoffStocks.length < 2) {
+		return null;
+	}
+
+	const handleOptimizePortfolio = () => {
+		if (handoffStatus !== 'idle') return;
+
+		setHandoffStatus('loading');
+		setRoboChatStocksInSession(handoffStocks);
+		setHandoffStatus('success');
+
+		timeoutRef.current = setTimeout(() => {
+			router.push('/portfolio/optimizer?preset=custom');
+			setHandoffStatus('idle');
+			timeoutRef.current = null;
+		}, 800);
+	};
+
+	const buttonClassName = cn(
+		'mt-4 h-12 w-full rounded-xl text-sm font-semibold text-white shadow-md transition-all duration-200',
+		handoffStatus === 'idle' &&
+			'bg-[linear-gradient(90deg,#38bdf8_0%,#4f46e5_100%)] hover:scale-[1.02] hover:brightness-110',
+		handoffStatus === 'loading' && 'bg-slate-400 cursor-not-allowed opacity-80 pointer-events-none',
+		handoffStatus === 'success' && 'bg-emerald-600 cursor-not-allowed pointer-events-none'
+	);
+
+	return (
+		<div className="rounded-xl border border-cyan-200 bg-[linear-gradient(180deg,#eff6ff_0%,#eef2ff_100%)] p-4 shadow-sm">
+			<p className="text-sm leading-7 text-slate-700">
+				คุณสามารถนำหุ้นชุดนี้ไปคำนวณสัดส่วนการลงทุน (Portfolio Optimization) เพื่อหาน้ำหนักที่เหมาะสมที่สุดตามหลักทฤษฎี MVO ได้ทันทีครับ
+			</p>
+			<Button
+				type="button"
+				onClick={handleOptimizePortfolio}
+				disabled={handoffStatus !== 'idle'}
+				className={buttonClassName}
+			>
+				{handoffStatus === 'idle' ? <PieChart className="mr-2 h-4 w-4" /> : null}
+				{handoffStatus === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+				{handoffStatus === 'success' ? <CheckCircle2 className="mr-2 h-4 w-4" /> : null}
+				{handoffStatus === 'idle' ? '🚀 นำหุ้นชุดนี้ไปจัดพอร์ต (Optimize Portfolio)' : null}
+				{handoffStatus === 'loading' ? '⏳ กำลังเตรียมข้อมูล...' : null}
+				{handoffStatus === 'success' ? '✅ ส่งข้อมูลเรียบร้อย!' : null}
+			</Button>
+		</div>
+	);
+}
+
 function buildResultsNode(payload: SmartScreenResponse, fallbackRegime: string): ReactNode {
 	const evaluatedRegime =
 		payload.marketReading?.systemEvaluatedRegime ||
@@ -256,6 +339,7 @@ function buildResultsNode(payload: SmartScreenResponse, fallbackRegime: string):
 					))}
 				</div>
 			</div>
+			<OptimizePortfolioHandoff stocks={payload.recommendedStocks.data} />
 		</div>
 	);
 }
@@ -303,10 +387,12 @@ export default function RoboAdvisorChat() {
 	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const messageIdRef = useRef(1);
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [isMounted, setIsMounted] = useState(false);
 	const [open, setOpen] = useState(false);
 	const [isRendered, setIsRendered] = useState(false);
 	const [isClosing, setIsClosing] = useState(false);
+	const [showWelcomeBubble, setShowWelcomeBubble] = useState(false);
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
 			id: 1,
@@ -340,9 +426,20 @@ export default function RoboAdvisorChat() {
 	useEffect(() => {
 		setIsMounted(true);
 
+		if (typeof window !== 'undefined' && !window.localStorage.getItem(ROBO_WELCOME_STORAGE_KEY)) {
+			welcomeTimerRef.current = setTimeout(() => {
+				setShowWelcomeBubble(true);
+				welcomeTimerRef.current = null;
+			}, 2000);
+		}
+
 		return () => {
 			if (closeTimerRef.current) {
 				clearTimeout(closeTimerRef.current);
+			}
+
+			if (welcomeTimerRef.current) {
+				clearTimeout(welcomeTimerRef.current);
 			}
 		};
 	}, []);
@@ -357,6 +454,19 @@ export default function RoboAdvisorChat() {
 
 		scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
 	}, [messages, isLoading, isRendered, step]);
+
+	const dismissWelcome = () => {
+		setShowWelcomeBubble(false);
+
+		if (typeof window !== 'undefined') {
+			window.localStorage.setItem(ROBO_WELCOME_STORAGE_KEY, 'true');
+		}
+
+		if (welcomeTimerRef.current) {
+			clearTimeout(welcomeTimerRef.current);
+			welcomeTimerRef.current = null;
+		}
+	};
 
 	const resetConversation = () => {
 		messageIdRef.current = 1;
@@ -390,6 +500,8 @@ export default function RoboAdvisorChat() {
 	};
 
 	const openChat = () => {
+		dismissWelcome();
+
 		if (closeTimerRef.current) {
 			clearTimeout(closeTimerRef.current);
 			closeTimerRef.current = null;
@@ -700,6 +812,27 @@ export default function RoboAdvisorChat() {
 	return (
 		<>
 			<style jsx global>{`
+				@keyframes robochat-welcome-in {
+					from {
+						opacity: 0;
+						transform: translateY(10px) scale(0.98);
+					}
+					to {
+						opacity: 1;
+						transform: translateY(0) scale(1);
+					}
+				}
+
+				@keyframes robochat-welcome-float {
+					0%,
+					100% {
+						transform: translateY(0);
+					}
+					50% {
+						transform: translateY(-4px);
+					}
+				}
+
 				@keyframes robochat-backdrop-in {
 					from {
 						opacity: 0;
@@ -753,6 +886,41 @@ export default function RoboAdvisorChat() {
 			`}</style>
 
 			<div className="relative z-[95]">
+				{showWelcomeBubble ? (
+					<div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.6rem)] left-4 z-[96] w-64 md:bottom-[calc(env(safe-area-inset-bottom,0px)+5.85rem)] md:left-auto md:right-5">
+						<div
+							role="button"
+							tabIndex={0}
+							onClick={openChat}
+							onKeyDown={(event) => {
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									openChat();
+								}
+							}}
+							className="relative cursor-pointer rounded-xl border border-blue-100 bg-white p-4 shadow-xl outline-none"
+							style={{ animation: 'robochat-welcome-in 500ms ease-out forwards, robochat-welcome-float 3.2s ease-in-out 600ms infinite' }}
+						>
+							<button
+								type="button"
+								onClick={(event) => {
+									event.stopPropagation();
+									dismissWelcome();
+								}}
+								className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+								aria-label="Dismiss RoboChat welcome"
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+							<p className="pr-6 text-sm font-semibold text-blue-600">ผู้ช่วยส่วนตัวของคุณ 🤖</p>
+							<p className="mt-2 text-xs leading-6 text-slate-600">
+								ให้ RoboAdvisor ช่วยวิเคราะห์สภาวะตลาด และคัดกรองหุ้นเด่นเข้าพอร์ตของคุณได้ที่นี่ครับ!
+							</p>
+							<div className="absolute -bottom-2 right-6 h-4 w-4 rotate-45 border-b border-r border-blue-100 bg-white" />
+						</div>
+					</div>
+				) : null}
+
 				<Button
 					type="button"
 					variant="ghost"
