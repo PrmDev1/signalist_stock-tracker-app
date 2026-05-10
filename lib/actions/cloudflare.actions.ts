@@ -25,6 +25,10 @@ function normalizeRiskLevel(value: unknown): 'low' | 'medium' | 'high' {
     return normalized;
   }
 
+  if (normalized === 'med') {
+    return 'medium';
+  }
+
   return 'medium';
 }
 
@@ -48,13 +52,43 @@ interface PortfolioRequest {
   shareOverrides?: Record<string, { shares: number; price?: number; tag?: string }>;
   lookbackYears: number;
   userId?: string;
-  riskLevel?: string;
+  targetRisk: number;
+  minRiskBound: number;
+  maxRiskBound: number;
   requireDiversification?: boolean;
   modelName?: 'mvo' | 'semi'; // MVO or Semi-Variance
   preset?: 'growth' | 'dividend' | 'balanced' | 'custom';
   customMethod?: 'auto' | 'ema' | 'mhr';
   span?: number;
   targetAllocations?: Record<string, number>;
+}
+
+interface RiskBoundsRequest {
+  tickers: Record<string, string>;
+  lookbackYears: number;
+  modelName: 'mvo' | 'semi';
+  preset: 'growth' | 'dividend' | 'balanced' | 'custom';
+  targetAllocations?: Record<string, number>;
+  requireDiversification: boolean;
+}
+
+interface RiskBoundsResponse {
+  status: string;
+  data: {
+    minRisk: number;
+    maxRisk: number;
+    minReturn?: number;
+    maxReturn?: number;
+    warningMsg?: string;
+  };
+}
+
+interface RiskBoundsData {
+  minRisk: number;
+  maxRisk: number;
+  minReturn?: number;
+  maxReturn?: number;
+  warningMsg?: string;
 }
 
 interface OptimizeAdvancedOptions {
@@ -78,6 +112,7 @@ interface PortfolioStatusResponse {
     allocations: Record<string, { weight: number; allocatedAmount: number }>;
     expectedReturn: number;
     volatility: number;
+    riskLevel?: string;
   };
   explainability?: {
     educationalInsights?: EducationalInsights;
@@ -133,6 +168,72 @@ interface UpdateSavedPortfolioInput {
   riskRewardProfile?: RiskRewardProfile | null;
 }
 
+function clampTargetRisk(value: number, minRisk: number, maxRisk: number): number {
+  if (!Number.isFinite(value)) {
+    return Number(((minRisk + maxRisk) / 2).toFixed(6));
+  }
+
+  return Number(Math.min(maxRisk, Math.max(minRisk, value)).toFixed(6));
+}
+
+function resolveTargetRiskFromLevel(level: string, minRisk: number, maxRisk: number): number {
+  const normalizedLevel = normalizeRiskLevel(level);
+  const range = maxRisk - minRisk;
+
+  if (!Number.isFinite(range) || range <= 0) {
+    return Number(((minRisk + maxRisk) / 2).toFixed(6));
+  }
+
+  if (normalizedLevel === 'low') {
+    return Number((minRisk + range * 0.2).toFixed(6));
+  }
+
+  if (normalizedLevel === 'high') {
+    return Number((minRisk + range * 0.8).toFixed(6));
+  }
+
+  return Number((minRisk + range * 0.4).toFixed(6));
+}
+
+async function requestRiskBounds(payload: RiskBoundsRequest): Promise<{ success: boolean; bounds?: RiskBoundsData; error?: string }> {
+  if (!CLOUDFLARE_BASE_URL || !CLOUDFLARE_API_KEY) {
+    return {
+      success: false,
+      error: 'Cloudflare API configuration is missing',
+    };
+  }
+
+  const res = await fetch(`${CLOUDFLARE_BASE_URL}/api/v1/portfolio/get-risk-bounds`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'API-KEY': CLOUDFLARE_API_KEY,
+    },
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    return {
+      success: false,
+      error: `API returned ${res.status}: ${errorText}`,
+    };
+  }
+
+  const data: RiskBoundsResponse = await res.json();
+  return {
+    success: true,
+    bounds: {
+      minRisk: Number(data.data.minRisk),
+      maxRisk: Number(data.data.maxRisk),
+      minReturn: Number.isFinite(data.data.minReturn) ? Number(data.data.minReturn) : undefined,
+      maxReturn: Number.isFinite(data.data.maxReturn) ? Number(data.data.maxReturn) : undefined,
+      warningMsg: data.data.warningMsg,
+    },
+  };
+}
+
 /**
  * Server Action: เริ่มต้นการ optimize portfolio
  * เรียก API Cloudflare เพื่อสร้างคำขอใหม่
@@ -140,11 +241,12 @@ interface UpdateSavedPortfolioInput {
 export async function startPortfolioOptimization(
   stocks: FilteredStock[],
   lookbackYears: number = 3,
-  riskLevel: string = 'medium',
+  targetRiskOrRiskLevel: number | string = 'medium',
   requireDiversification: boolean = true,
   modelName: 'mvo' | 'semi' = 'mvo',
   shareOverrides?: Record<string, { shares: number; price?: number; tag?: string }>,
-  advancedOptions?: OptimizeAdvancedOptions
+  advancedOptions?: OptimizeAdvancedOptions,
+  riskBounds?: { minRisk: number; maxRisk: number }
 ): Promise<{ success: boolean; reqId?: string; error?: string }> {
   try {
     if (!CLOUDFLARE_BASE_URL || !CLOUDFLARE_API_KEY) {
@@ -181,12 +283,38 @@ export async function startPortfolioOptimization(
       };
     }
 
+    const riskBoundsResponse = riskBounds
+      ? ({ success: true as const, bounds: riskBounds, error: undefined } as const)
+      : await requestRiskBounds({
+          tickers: tickerMap,
+          lookbackYears,
+          modelName,
+          preset: advancedOptions?.preset || 'custom',
+          targetAllocations: advancedOptions?.targetAllocations || {},
+          requireDiversification,
+        });
+
+    if (!riskBoundsResponse.success || !riskBoundsResponse.bounds) {
+      return {
+        success: false,
+        error: riskBoundsResponse.error || 'Unable to determine risk bounds',
+      };
+    }
+
+    const minRiskBound = Number(riskBoundsResponse.bounds.minRisk);
+    const maxRiskBound = Number(riskBoundsResponse.bounds.maxRisk);
+    const targetRisk = typeof targetRiskOrRiskLevel === 'number'
+      ? clampTargetRisk(targetRiskOrRiskLevel, minRiskBound, maxRiskBound)
+      : resolveTargetRiskFromLevel(targetRiskOrRiskLevel, minRiskBound, maxRiskBound);
+
     const payload: PortfolioRequest = {
       tickers: tickerMap,
       shareOverrides,
       lookbackYears,
       userId: session.user.id,
-      riskLevel,
+      targetRisk,
+      minRiskBound,
+      maxRiskBound,
       requireDiversification,
       modelName,
       preset: advancedOptions?.preset || 'custom',
@@ -249,6 +377,7 @@ export async function getPortfolioOptimizationStatus(
     allocations: Record<string, { weight: number; allocatedAmount: number }>;
     expectedReturn: number;
     volatility: number;
+    riskLevel?: string;
   };
   explainability?: {
     educationalInsights?: EducationalInsights;

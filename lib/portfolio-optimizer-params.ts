@@ -1,10 +1,12 @@
+import type { RiskBounds } from '@/components/portfolio/optimizer/types';
 import type { PortfolioConfigurationState } from '@/components/portfolio/optimizer/preset-config.types';
 
 export interface PortfolioOptimizerParams {
   investmentAmount: number;
   monthlyDca: number;
   targetYears: number;
-  riskTolerance: 'low' | 'medium' | 'high';
+  targetRisk: number;
+  riskBounds: RiskBounds;
   investmentHorizon: 'short' | 'medium' | 'long';
   modelName: 'mvo' | 'semi';
   brokerMinOrder: number;
@@ -36,7 +38,10 @@ export function getOptimizerParamsFromSession(): PortfolioOptimizerParams | null
       !Number.isFinite(parsed.investmentAmount) ||
       !Number.isFinite(parsed.monthlyDca) ||
       !Number.isFinite(parsed.targetYears) ||
-      !parsed.riskTolerance ||
+      !Number.isFinite(parsed.targetRisk) ||
+      !parsed.riskBounds ||
+      !Number.isFinite(parsed.riskBounds.minRisk) ||
+      !Number.isFinite(parsed.riskBounds.maxRisk) ||
       !parsed.investmentHorizon ||
       !parsed.modelName ||
       !Number.isFinite(parsed.brokerMinOrder) ||
@@ -51,7 +56,14 @@ export function getOptimizerParamsFromSession(): PortfolioOptimizerParams | null
       investmentAmount: Number(parsed.investmentAmount),
       monthlyDca: Number(parsed.monthlyDca),
       targetYears: Number(parsed.targetYears),
-      riskTolerance: parsed.riskTolerance,
+      targetRisk: Number(parsed.targetRisk),
+      riskBounds: {
+        minRisk: Number(parsed.riskBounds.minRisk),
+        maxRisk: Number(parsed.riskBounds.maxRisk),
+        minReturn: Number.isFinite(parsed.riskBounds.minReturn) ? Number(parsed.riskBounds.minReturn) : undefined,
+        maxReturn: Number.isFinite(parsed.riskBounds.maxReturn) ? Number(parsed.riskBounds.maxReturn) : undefined,
+        warningMsg: typeof parsed.riskBounds.warningMsg === 'string' ? parsed.riskBounds.warningMsg : undefined,
+      },
       investmentHorizon: parsed.investmentHorizon,
       modelName: parsed.modelName,
       brokerMinOrder: Number(parsed.brokerMinOrder),

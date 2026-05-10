@@ -13,6 +13,29 @@ interface ChartData {
   value: number;
 }
 
+function getRiskLevelBadge(level?: string | null): { label: string; className: string } {
+  const normalized = String(level ?? '').trim().toUpperCase();
+
+  if (normalized === 'LOW') {
+    return {
+      label: 'LOW RISK',
+      className: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
+    };
+  }
+
+  if (normalized === 'HIGH') {
+    return {
+      label: 'HIGH RISK',
+      className: 'border-rose-400/30 bg-rose-500/10 text-rose-200',
+    };
+  }
+
+  return {
+    label: 'MED RISK',
+    className: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
+  };
+}
+
 function formatChartData(allocations: Record<string, { weight: number; allocatedAmount: number }>): ChartData[] {
   return Object.keys(allocations).map((ticker) => ({
     name: ticker,
@@ -36,6 +59,7 @@ export default function ResultsPanel({
 }: ResultsPanelProps) {
   const expectedReturnPercent = result ? result.expectedReturn * 100 : 0;
   const volatilityPercent = result ? result.volatility * 100 : 0;
+  const riskBadge = getRiskLevelBadge(result?.riskLevel);
 
   return (
     <>
@@ -56,14 +80,19 @@ export default function ResultsPanel({
         <section className="space-y-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,22,35,0.96),rgba(11,15,24,0.98))] p-5 shadow-[0_22px_80px_rgba(0,0,0,0.25)] sm:p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold text-white sm:text-2xl">RoboAdvisor results</h2>
-            {modelUsed && (
-              <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
-                โมเดล: {modelUsed.toUpperCase()}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full border px-3 py-1 text-xs font-medium ${riskBadge.className}`}>
+                {riskBadge.label}
               </span>
-            )}
+              {modelUsed && (
+                <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
+                  โมเดล: {modelUsed.toUpperCase()}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-teal-400/30 bg-teal-400/10 p-4">
               <p className="text-xs uppercase tracking-wide text-teal-400">ผลตอบแทนคาดหวังต่อปี</p>
               <p className="mt-1 text-2xl font-bold text-teal-400">{formatPercentWithoutRounding(expectedReturnPercent)}</p>
@@ -71,6 +100,10 @@ export default function ResultsPanel({
             <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-4">
               <p className="text-xs uppercase tracking-wide text-yellow-400">ความผันผวน (ความเสี่ยง)</p>
               <p className="mt-1 text-2xl font-bold text-yellow-400">{formatPercentWithoutRounding(volatilityPercent)}</p>
+            </div>
+            <div className={`rounded-xl border p-4 ${riskBadge.className}`}>
+              <p className="text-xs uppercase tracking-wide">Risk level</p>
+              <p className="mt-1 text-2xl font-bold">{riskBadge.label}</p>
             </div>
           </div>
 

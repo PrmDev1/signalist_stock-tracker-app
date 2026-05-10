@@ -65,6 +65,26 @@ export interface FiltersResponse {
   };
 }
 
+export interface RiskBoundsRequest {
+  tickers: Record<string, string>;
+  lookbackYears: number;
+  modelName: 'mvo' | 'semi';
+  preset: 'growth' | 'dividend' | 'balanced' | 'custom';
+  targetAllocations?: Record<string, number>;
+  requireDiversification: boolean;
+}
+
+interface RiskBoundsResponse {
+  status: string;
+  data: {
+    minRisk: number;
+    maxRisk: number;
+    minReturn?: number;
+    maxReturn?: number;
+    warningMsg?: string;
+  };
+}
+
 // ---- Server Actions ----
 
 /**
@@ -233,6 +253,98 @@ export async function getPortfolioTickers(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[DEBUG] Fetch error:', errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+export async function fetchRiskBounds(
+  payload: RiskBoundsRequest
+): Promise<{
+  success: boolean;
+  bounds?: {
+    minRisk: number;
+    maxRisk: number;
+    minReturn?: number;
+    maxReturn?: number;
+    warningMsg?: string;
+  };
+  error?: string;
+}> {
+  try {
+    if (!CLOUDFLARE_BASE_URL || !CLOUDFLARE_API_KEY) {
+      return {
+        success: false,
+        error: 'Cloudflare API configuration is missing',
+      };
+    }
+
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    const normalizedTickers = Object.entries(payload.tickers || {}).reduce<Record<string, string>>((acc, [ticker, tag]) => {
+      const normalizedTicker = String(ticker).trim().toUpperCase();
+      if (!normalizedTicker) return acc;
+
+      acc[normalizedTicker] = String(tag ?? 'unknown').trim().toLowerCase() || 'unknown';
+      return acc;
+    }, {});
+
+    if (Object.keys(normalizedTickers).length < 2) {
+      return {
+        success: false,
+        error: 'Minimum of 2 tickers are required to calculate risk bounds',
+      };
+    }
+
+    const normalizedPayload: RiskBoundsRequest = {
+      tickers: normalizedTickers,
+      lookbackYears: Math.max(1, Math.min(20, Number(payload.lookbackYears) || 5)),
+      modelName: payload.modelName,
+      preset: payload.preset,
+      targetAllocations: payload.targetAllocations || {},
+      requireDiversification: payload.requireDiversification,
+    };
+
+    const res = await fetch(`${CLOUDFLARE_BASE_URL}/api/v1/portfolio/get-risk-bounds`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'API-KEY': CLOUDFLARE_API_KEY,
+      },
+      cache: 'no-store',
+      body: JSON.stringify(normalizedPayload),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return {
+        success: false,
+        error: `API returned ${res.status}: ${errorText}`,
+      };
+    }
+
+    const data: RiskBoundsResponse = await res.json();
+
+    return {
+      success: true,
+      bounds: {
+        minRisk: Number(data.data.minRisk),
+        maxRisk: Number(data.data.maxRisk),
+        minReturn: Number.isFinite(data.data.minReturn) ? Number(data.data.minReturn) : undefined,
+        maxReturn: Number.isFinite(data.data.maxReturn) ? Number(data.data.maxReturn) : undefined,
+        warningMsg: data.data.warningMsg,
+      },
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
       error: errorMessage,

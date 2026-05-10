@@ -3,8 +3,9 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { startPortfolioOptimization, getPortfolioOptimizationStatus, savePortfolioToDatabase } from '@/lib/actions/cloudflare.actions';
-import { type CompanyProfile, getPortfolioTickers } from '@/lib/actions/portfolio.actions';
+import { type CompanyProfile, fetchRiskBounds, getPortfolioTickers } from '@/lib/actions/portfolio.actions';
 import {
   clearRoboChatStocksFromSession,
   type FilteredStock,
@@ -26,7 +27,8 @@ import CustomConfig from './optimizer/CustomConfig';
 import type {
   InvestmentHorizon,
   PortfolioResult,
-  RiskTolerance,
+  PortfolioRiskLevel,
+  RiskBounds,
 } from '@/components/portfolio/optimizer/types';
 import type {
   PortfolioConfigurationState,
@@ -104,6 +106,47 @@ function buildFallbackFilteredStocks(tickers: string[], stocksByTicker: Map<stri
   });
 }
 
+function buildTickerMap(stocks: FilteredStock[]): Record<string, string> {
+  return stocks.reduce<Record<string, string>>((acc, stock) => {
+    const symbol = String(stock.symbol ?? '').trim().toUpperCase();
+    if (!symbol) return acc;
+
+    acc[symbol] = typeof stock.tag === 'string' && stock.tag.trim().length > 0
+      ? stock.tag.trim().toLowerCase()
+      : 'unknown';
+
+    return acc;
+  }, {});
+}
+
+function clampRiskToBounds(value: number | null, bounds: RiskBounds): number {
+  if (!Number.isFinite(value)) {
+    return Number(((bounds.minRisk + bounds.maxRisk) / 2).toFixed(6));
+  }
+
+  return Number(Math.min(bounds.maxRisk, Math.max(bounds.minRisk, Number(value))).toFixed(6));
+}
+
+function classifyRiskLevel(targetRisk: number | null, bounds: RiskBounds | null): PortfolioRiskLevel | null {
+  if (!bounds || !Number.isFinite(targetRisk) || bounds.maxRisk <= bounds.minRisk) {
+    return null;
+  }
+
+  const posPct = ((Number(targetRisk) - bounds.minRisk) / (bounds.maxRisk - bounds.minRisk)) * 100;
+
+  if (posPct < 35) return 'LOW';
+  if (posPct > 45) return 'HIGH';
+  return 'MED';
+}
+
+function normalizePortfolioRiskLevel(value: PortfolioRiskLevel | string | null | undefined): 'low' | 'medium' | 'high' {
+  const normalized = String(value ?? '').trim().toUpperCase();
+
+  if (normalized === 'LOW') return 'low';
+  if (normalized === 'HIGH') return 'high';
+  return 'medium';
+}
+
 export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptimizerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,8 +171,12 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
   const [targetYears, setTargetYears] = useState<number>(10);
   const [investmentHorizon, setInvestmentHorizon] = useState<InvestmentHorizon>('medium');
   const [brokerMinOrder, setBrokerMinOrder] = useState<number>(5);
-  const [riskTolerance, setRiskTolerance] = useState<RiskTolerance>('medium');
-  const optimizedRiskLevelRef = useRef<RiskTolerance>('medium');
+  const [targetRisk, setTargetRisk] = useState<number | null>(null);
+  const [riskBounds, setRiskBounds] = useState<RiskBounds | null>(null);
+  const [isFetchingRiskBounds, setIsFetchingRiskBounds] = useState(false);
+  const [riskBoundsError, setRiskBoundsError] = useState<string | null>(null);
+  const optimizedRiskLevelRef = useRef<'low' | 'medium' | 'high'>('medium');
+  const lastRiskBoundsWarningRef = useRef<string | null>(null);
   const [requireDiversification, setRequireDiversification] = useState<boolean>(true);
   const [modelName, setModelName] = useState<'mvo' | 'semi'>('mvo');
   const [portfolioName, setPortfolioName] = useState('My Optimized Portfolio');
@@ -170,6 +217,16 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     return 5;
   }, [investmentHorizon, presetConfig.lookbackYears]);
 
+  const tickerMap = useMemo(() => buildTickerMap(selectedStocks), [selectedStocks]);
+  const targetAllocationsKey = useMemo(
+    () => JSON.stringify(presetConfig.targetAllocations || {}),
+    [presetConfig.targetAllocations]
+  );
+  const derivedRiskLevel = useMemo(
+    () => classifyRiskLevel(targetRisk, riskBounds),
+    [riskBounds, targetRisk]
+  );
+
   const canRunOptimization =
     canCreatePortfolio &&
     Number.isFinite(investmentAmount) &&
@@ -178,7 +235,10 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     monthlyDca >= 0 &&
     Number.isFinite(targetYears) &&
     targetYears >= 1 &&
-    targetYears <= 20;
+    targetYears <= 20 &&
+    !!riskBounds &&
+    Number.isFinite(targetRisk) &&
+    !isFetchingRiskBounds;
 
   useEffect(() => {
     let isCancelled = false;
@@ -296,14 +356,89 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setInvestmentAmount(params.investmentAmount);
     setMonthlyDca(params.monthlyDca);
     setTargetYears(params.targetYears);
-    setRiskTolerance(params.riskTolerance);
+    setTargetRisk(params.targetRisk);
+    setRiskBounds(params.riskBounds);
     setInvestmentHorizon(params.investmentHorizon);
     setModelName(params.modelName);
     setBrokerMinOrder(params.brokerMinOrder);
     setRequireDiversification(params.requireDiversification);
     setPresetConfig(params.presetConfig);
+    optimizedRiskLevelRef.current = normalizePortfolioRiskLevel(classifyRiskLevel(params.targetRisk, params.riskBounds));
     setIsResultParamsReady(true);
   }, [isSelectionReady, mode, router]);
+
+  useEffect(() => {
+    if (!isSelectionReady || mode !== 'settings') return;
+
+    if (Object.keys(tickerMap).length < 2) {
+      setRiskBounds(null);
+      setTargetRisk(null);
+      setRiskBoundsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(async () => {
+      setIsFetchingRiskBounds(true);
+      setRiskBoundsError(null);
+
+      try {
+        const response = await fetchRiskBounds({
+          tickers: tickerMap,
+          lookbackYears,
+          modelName,
+          preset: presetConfig.preset,
+          targetAllocations: presetConfig.targetAllocations,
+          requireDiversification,
+        });
+
+        if (cancelled) return;
+
+        if (!response.success || !response.bounds) {
+          const message = response.error || 'ไม่สามารถคำนวณช่วงความเสี่ยงได้';
+          setRiskBounds(null);
+          setTargetRisk(null);
+          setRiskBoundsError(message);
+          toast.error(message);
+          return;
+        }
+
+        const nextBounds = response.bounds;
+        const nextTargetRisk = clampRiskToBounds(targetRisk, nextBounds);
+        const didAutoAdjustRiskTarget = Number.isFinite(targetRisk) && nextTargetRisk !== Number(targetRisk);
+
+        setRiskBounds(nextBounds);
+        setTargetRisk(nextTargetRisk);
+        setRiskBoundsError(null);
+
+        if (didAutoAdjustRiskTarget) {
+          toast.info('ปรับค่าความเสี่ยงเป้าหมายให้สอดคล้องกับการตั้งค่าใหม่แล้ว (Risk target auto-adjusted)');
+        }
+
+        if (nextBounds.warningMsg && nextBounds.warningMsg !== lastRiskBoundsWarningRef.current) {
+          lastRiskBoundsWarningRef.current = nextBounds.warningMsg;
+          toast.warning(nextBounds.warningMsg);
+        }
+      } catch (error) {
+        if (cancelled) return;
+
+        const message = error instanceof Error ? error.message : 'ไม่สามารถคำนวณช่วงความเสี่ยงได้';
+        setRiskBounds(null);
+        setTargetRisk(null);
+        setRiskBoundsError(message);
+        toast.error(message);
+      } finally {
+        if (!cancelled) {
+          setIsFetchingRiskBounds(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [isSelectionReady, lookbackYears, mode, modelName, presetConfig.preset, requireDiversification, targetAllocationsKey, tickerMap]);
 
   const handleOptimize = async () => {
     if (selectedStocks.length === 0) {
@@ -323,6 +458,12 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       return;
     }
 
+    if (!riskBounds || !Number.isFinite(targetRisk)) {
+      setErrorMsg('กรุณารอให้ระบบคำนวณช่วงความเสี่ยงให้เสร็จก่อน');
+      setStatus('FAILED');
+      return;
+    }
+
     setStatus('PROCESSING');
     setResult(null);
     setReqId(null);
@@ -333,14 +474,13 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setRiskRewardProfile(null);
     setStatusMessage(`กำลังเตรียมหุ้น ${selectedStocks.length} ตัวสำหรับการจัดพอร์ต`);
 
-    const selectedRiskLevel = riskTolerance;
-    optimizedRiskLevelRef.current = selectedRiskLevel;
+    optimizedRiskLevelRef.current = normalizePortfolioRiskLevel(derivedRiskLevel);
 
     try {
       const response = await startPortfolioOptimization(
         selectedStocks,
         lookbackYears,
-        selectedRiskLevel,
+        Number(targetRisk),
         requireDiversification,
         modelName,
         undefined,
@@ -349,6 +489,10 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
           customMethod: presetConfig.customMethod,
           span: presetConfig.span,
           targetAllocations: presetConfig.targetAllocations,
+        },
+        {
+          minRisk: riskBounds.minRisk,
+          maxRisk: riskBounds.maxRisk,
         }
       );
 
@@ -392,7 +536,8 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
       investmentAmount,
       monthlyDca,
       targetYears,
-      riskTolerance,
+      targetRisk: Number(targetRisk),
+      riskBounds,
       investmentHorizon,
       modelName,
       brokerMinOrder,
@@ -427,6 +572,7 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
 
         if (response.status === 'PORTFOLIO_READY' && response.portfolio) {
           setResult(response.portfolio);
+          optimizedRiskLevelRef.current = normalizePortfolioRiskLevel(response.portfolio.riskLevel ?? derivedRiskLevel);
           setModelUsed(response.modelUsed || null);
           setBacktestAndMetrics(response.backtestAndMetrics || null);
           setEducationalInsights(response.explainability?.educationalInsights || null);
@@ -459,7 +605,9 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
     setTargetYears(10);
     setInvestmentHorizon('medium');
     setBrokerMinOrder(5);
-    setRiskTolerance('medium');
+    setTargetRisk(null);
+    setRiskBounds(null);
+    setRiskBoundsError(null);
     setRequireDiversification(true);
     setModelName('mvo');
     setPresetConfig(toConfigurationState(getDefaultPresetFormValues(resolvedPresetFromQuery)));
@@ -625,8 +773,12 @@ export default function PortfolioOptimizer({ mode = 'settings' }: PortfolioOptim
               setMonthlyDca={setMonthlyDca}
               targetYears={targetYears}
               setTargetYears={setTargetYears}
-              riskTolerance={riskTolerance}
-              setRiskTolerance={setRiskTolerance}
+              targetRisk={targetRisk}
+              setTargetRisk={setTargetRisk}
+              riskBounds={riskBounds}
+              isFetchingRiskBounds={isFetchingRiskBounds}
+              riskBoundsError={riskBoundsError}
+              derivedRiskLevel={derivedRiskLevel}
               investmentHorizon={investmentHorizon}
               setInvestmentHorizon={setInvestmentHorizon}
               modelName={modelName}

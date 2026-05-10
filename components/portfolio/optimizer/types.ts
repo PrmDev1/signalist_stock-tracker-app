@@ -14,10 +14,20 @@ export interface PortfolioResult {
   allocations: Record<string, { weight: number; allocatedAmount: number }>;
   expectedReturn: number;
   volatility: number;
+  riskLevel?: string | null;
 }
 
-export type RiskTolerance = 'low' | 'medium' | 'high';
 export type InvestmentHorizon = 'short' | 'medium' | 'long';
+
+export interface RiskBounds {
+  minRisk: number;
+  maxRisk: number;
+  minReturn?: number;
+  maxReturn?: number;
+  warningMsg?: string | null;
+}
+
+export type PortfolioRiskLevel = 'LOW' | 'MED' | 'HIGH' | 'low' | 'medium' | 'high';
 
 export interface ParameterPanelProps {
   investmentAmount: number;
@@ -26,8 +36,12 @@ export interface ParameterPanelProps {
   setMonthlyDca: (value: number) => void;
   targetYears: number;
   setTargetYears: (value: number) => void;
-  riskTolerance: RiskTolerance;
-  setRiskTolerance: (value: RiskTolerance) => void;
+  targetRisk: number | null;
+  setTargetRisk: (value: number) => void;
+  riskBounds: RiskBounds | null;
+  isFetchingRiskBounds: boolean;
+  riskBoundsError: string | null;
+  derivedRiskLevel: PortfolioRiskLevel | null;
   investmentHorizon: InvestmentHorizon;
   setInvestmentHorizon: (value: InvestmentHorizon) => void;
   modelName: 'mvo' | 'semi';
