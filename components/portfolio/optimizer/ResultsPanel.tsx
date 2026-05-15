@@ -31,7 +31,7 @@ function getRiskLevelBadge(level?: string | null): { label: string; className: s
   }
 
   return {
-    label: 'MED RISK',
+    label: 'MEDIUM RISK',
     className: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
   };
 }

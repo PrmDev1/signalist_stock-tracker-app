@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Bot, CheckCircle2, Loader2, PieChart, RefreshCcw, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { setRoboChatStocksInSession, type FilteredStock } from '@/lib/portfolio-filtered-stocks';
 import { getFactorLabel, getScoreLevel, getTotalRatingLabel, type FactorType } from '@/lib/score-utils';
@@ -12,7 +13,6 @@ import { cn } from '@/lib/utils';
 
 type MessageRole = 'user' | 'bot';
 type ChatStep = 'menu' | 'config' | 'loading' | 'done';
-type ScreenMode = 'global' | 'sector';
 type ChatMessageKind = 'text' | 'config';
 
 interface ChatMessage {
@@ -20,7 +20,6 @@ interface ChatMessage {
 	role: MessageRole;
 	content: string | ReactNode;
 	kind?: ChatMessageKind;
-	mode?: ScreenMode;
 }
 
 interface SmartScreenStock {
@@ -34,32 +33,52 @@ interface SmartScreenStock {
 	Value?: number;
 	Growth?: number;
 	Risk?: number;
+	Quality_Z?: number;
+	Value_Z?: number;
+	Growth_Z?: number;
+	Risk_Z?: number;
 	quality?: number;
 	value?: number;
 	growth?: number;
 	risk?: number;
+	totalDynamicScore?: number;
+	Advanced_Intrinsic_Score?: number;
 }
 
-interface SmartScreenResponse {
-	status: string;
-	strategyApplied: {
-		message: string;
-		evaluatedRegime?: string;
-		userOverrideRegime?: string;
-	};
-	marketReading?: {
-		systemEvaluatedRegime?: string;
-		userOverrideRegime?: string;
-	};
-	recommendedStocks: {
-		count: number;
-		data: SmartScreenStock[];
-	};
+interface SmartScreenAcceptedResponse {
+	status: 'ACCEPTED';
+	message: string;
+	reqId: string;
+	checkStatusUrl: string;
+}
+
+interface SmartScreenProcessingResponse {
+	status: 'PROCESSING';
+	message: string;
+}
+
+interface SmartScreenAppliedWeights {
+	w_Q: number;
+	w_V: number;
+	w_G: number;
+	w_R: number;
+}
+
+interface SmartScreenCompletedResponse {
+	status: 'COMPLETED';
+	reqId: string;
+	rebalanceDate?: string;
+	evaluatedRegime: string;
+	appliedWeights: SmartScreenAppliedWeights;
+	actionableCount: number;
+	totalShowCount: number;
+	recommendedStocks: SmartScreenStock[];
 }
 
 interface ApiErrorResponse {
 	error?: string;
 	detail?: string;
+	message?: string;
 }
 
 interface RegimeOption {
@@ -71,7 +90,6 @@ interface RegimeOption {
 interface SubmittedConfig {
 	limit: number;
 	regime: string;
-	mode?: ScreenMode;
 }
 
 interface MacroMetric {
@@ -137,11 +155,6 @@ const REGIMES: RegimeOption[] = [
 	},
 ];
 
-const MODE_LABELS: Record<ScreenMode, string> = {
-	global: 'เปรียบเทียบหุ้นทั้งตลาด (Global Screen)',
-	sector: 'เปรียบเทียบหุ้นรายอุตสาหกรรม (Best per Sector)',
-};
-
 function normalizeRegimeLabel(value: string): string {
 	if (value === SYSTEM_DEFAULT_VALUE) return 'ใช้ค่าเริ่มต้นของระบบ';
 	return value.includes('. ') ? value.split('. ')[1] ?? value : value;
@@ -161,8 +174,9 @@ function normalizeFactorKey(value: string): string {
 
 function getFactorScore(stock: SmartScreenStock, factor: FactorType): number | undefined {
 	const upperKey = factor as keyof SmartScreenStock;
+	const zKey = `${factor}_Z` as keyof SmartScreenStock;
 	const lowerKey = factor.toLowerCase() as keyof SmartScreenStock;
-	const directScore = getNumericScore(stock[upperKey]) ?? getNumericScore(stock[lowerKey]);
+	const directScore = getNumericScore(stock[upperKey]) ?? getNumericScore(stock[zKey]) ?? getNumericScore(stock[lowerKey]);
 	if (directScore !== undefined) return directScore;
 
 	if (!stock.factors) return undefined;
@@ -173,7 +187,7 @@ function getFactorScore(stock: SmartScreenStock, factor: FactorType): number | u
 }
 
 function getTotalScore(stock: SmartScreenStock): number | undefined {
-	return getNumericScore(stock.dynamicScore) ?? getNumericScore(stock.finalScore);
+	return getNumericScore(stock.totalDynamicScore) ?? getNumericScore(stock.dynamicScore) ?? getNumericScore(stock.finalScore);
 }
 
 function getBadgeClassName(level: number): string {
@@ -268,26 +282,52 @@ function OptimizePortfolioHandoff({ stocks }: { stocks: SmartScreenStock[] }) {
 	);
 }
 
-function buildResultsNode(payload: SmartScreenResponse, fallbackRegime: string): ReactNode {
-	const evaluatedRegime =
-		payload.marketReading?.systemEvaluatedRegime ||
-		payload.marketReading?.userOverrideRegime ||
-		payload.strategyApplied.evaluatedRegime ||
-		payload.strategyApplied.userOverrideRegime ||
-		fallbackRegime;
+function buildResultsNode(payload: SmartScreenCompletedResponse, fallbackRegime: string): ReactNode {
+	const evaluatedRegime = payload.evaluatedRegime || fallbackRegime;
+	const factorWeights = [
+		{ key: 'Q', label: 'Quality', value: payload.appliedWeights.w_Q },
+		{ key: 'V', label: 'Value', value: payload.appliedWeights.w_V },
+		{ key: 'G', label: 'Growth', value: payload.appliedWeights.w_G },
+		{ key: 'R', label: 'Risk', value: payload.appliedWeights.w_R },
+	];
 
 	return (
 		<div className="space-y-4">
-			<div className="rounded-xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-700 shadow-sm">
-				{payload.strategyApplied.message}
+			<div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+				<p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Screen Summary</p>
+				<div className="mt-3 grid gap-3 sm:grid-cols-2">
+					<div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+						<p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Evaluated Regime</p>
+						<p className="mt-2 font-semibold text-slate-900">{normalizeRegimeLabel(evaluatedRegime)}</p>
+						{payload.rebalanceDate ? <p className="mt-1 text-xs text-slate-500">Rebalance date: {payload.rebalanceDate}</p> : null}
+					</div>
+					<div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+						<p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Coverage</p>
+						<p className="mt-2 font-semibold text-slate-900">{payload.totalShowCount} หุ้นที่ผ่านการจัดอันดับ</p>
+						<p className="mt-1 text-xs text-slate-500">Actionable: {payload.actionableCount} ตัว</p>
+					</div>
+				</div>
+				<div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-slate-700">
+					<p className="font-medium text-slate-900">โมเดลนี้ใช้คะแนน 4 ปัจจัยหลัก Q, V, G, R โดยแต่ละคะแนนอยู่ในช่วง -3 ถึง +3</p>
+					<p className="mt-1 text-xs text-slate-600">Q = Quality, V = Value, G = Growth, R = Risk</p>
+				</div>
+				<div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+					{factorWeights.map((weight) => (
+						<div key={weight.key} className="rounded-lg border border-slate-200 bg-white p-3 text-center">
+							<p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">{weight.key}</p>
+							<p className="mt-1 text-sm font-semibold text-slate-900">{weight.label}</p>
+							<p className="mt-2 text-lg font-bold text-blue-600">{weight.value.toFixed(2)}</p>
+						</div>
+					))}
+				</div>
 			</div>
 			<div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
 				<div className="mb-3 flex items-center justify-between text-xs text-slate-500">
 					<span>ผลลัพธ์ที่คัดกรองได้</span>
-					<span>{payload.recommendedStocks.count} รายการ</span>
+					<span>{payload.recommendedStocks.length} รายการ</span>
 				</div>
 				<div className="scrollbar-slim max-h-64 space-y-2 overflow-y-auto pr-2">
-					{payload.recommendedStocks.data.map((stock, index) => (
+					{payload.recommendedStocks.map((stock, index) => (
 						(() => {
 							const totalScore = getTotalScore(stock);
 							const totalLevel = getScoreLevel(totalScore);
@@ -339,7 +379,7 @@ function buildResultsNode(payload: SmartScreenResponse, fallbackRegime: string):
 					))}
 				</div>
 			</div>
-			<OptimizePortfolioHandoff stocks={payload.recommendedStocks.data} />
+			<OptimizePortfolioHandoff stocks={payload.recommendedStocks} />
 		</div>
 	);
 }
@@ -385,9 +425,12 @@ function buildInitialGreetingNode(): ReactNode {
 
 export default function RoboAdvisorChat() {
 	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+	const smartScreenLimitInputRef = useRef<HTMLInputElement | null>(null);
 	const messageIdRef = useRef(1);
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isPollingCancelledRef = useRef(false);
 	const [isMounted, setIsMounted] = useState(false);
 	const [open, setOpen] = useState(false);
 	const [isRendered, setIsRendered] = useState(false);
@@ -401,12 +444,12 @@ export default function RoboAdvisorChat() {
 		},
 	]);
 	const [step, setStep] = useState<ChatStep>('menu');
-	const [selectedMode, setSelectedMode] = useState<ScreenMode | null>(null);
 	const [limit, setLimit] = useState(10);
 	const [selectedRegime, setSelectedRegime] = useState<string>(SYSTEM_DEFAULT_VALUE);
 	const [activeConfigMessageId, setActiveConfigMessageId] = useState<number | null>(null);
 	const [submittedConfigs, setSubmittedConfigs] = useState<Record<number, SubmittedConfig>>({});
 	const [isLoading, setIsLoading] = useState(false);
+	const [loadingMessage, setLoadingMessage] = useState('RoboChat กำลังวิเคราะห์ข้อมูลให้คุณ...');
 
 	const nextMessageId = () => {
 		messageIdRef.current += 1;
@@ -425,6 +468,7 @@ export default function RoboAdvisorChat() {
 
 	useEffect(() => {
 		setIsMounted(true);
+		isPollingCancelledRef.current = false;
 
 		if (typeof window !== 'undefined' && !window.localStorage.getItem(ROBO_WELCOME_STORAGE_KEY)) {
 			welcomeTimerRef.current = setTimeout(() => {
@@ -434,12 +478,19 @@ export default function RoboAdvisorChat() {
 		}
 
 		return () => {
+			isPollingCancelledRef.current = true;
+
 			if (closeTimerRef.current) {
 				clearTimeout(closeTimerRef.current);
 			}
 
 			if (welcomeTimerRef.current) {
 				clearTimeout(welcomeTimerRef.current);
+			}
+
+			if (pollingTimerRef.current) {
+				clearTimeout(pollingTimerRef.current);
+				pollingTimerRef.current = null;
 			}
 		};
 	}, []);
@@ -455,6 +506,31 @@ export default function RoboAdvisorChat() {
 		scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
 	}, [messages, isLoading, isRendered, step]);
 
+	useEffect(() => {
+		if (step !== 'config' || activeConfigMessageId === null) return;
+		if (!smartScreenLimitInputRef.current) return;
+
+		smartScreenLimitInputRef.current.scrollIntoView({
+			behavior: 'smooth',
+			block: 'center',
+			inline: 'nearest',
+		});
+
+		const focusTimer = setTimeout(() => {
+			smartScreenLimitInputRef.current?.focus();
+			smartScreenLimitInputRef.current?.select();
+		}, 180);
+
+		return () => clearTimeout(focusTimer);
+	}, [activeConfigMessageId, step]);
+
+	const clearPollingTimer = () => {
+		if (pollingTimerRef.current) {
+			clearTimeout(pollingTimerRef.current);
+			pollingTimerRef.current = null;
+		}
+	};
+
 	const dismissWelcome = () => {
 		setShowWelcomeBubble(false);
 
@@ -469,6 +545,7 @@ export default function RoboAdvisorChat() {
 	};
 
 	const resetConversation = () => {
+		clearPollingTimer();
 		messageIdRef.current = 1;
 		setMessages([
 			{
@@ -478,23 +555,21 @@ export default function RoboAdvisorChat() {
 			},
 		]);
 		setStep('menu');
-		setSelectedMode(null);
 		setLimit(10);
 		setSelectedRegime(SYSTEM_DEFAULT_VALUE);
 		setActiveConfigMessageId(null);
 		setSubmittedConfigs({});
 		setIsLoading(false);
+		setLoadingMessage('RoboChat กำลังวิเคราะห์ข้อมูลให้คุณ...');
 	};
 
-	const handleSelectMode = (mode: ScreenMode) => {
-		setSelectedMode(mode);
+	const handleStartSmartScreen = () => {
 		setStep('config');
-		appendMessage('user', MODE_LABELS[mode]);
+		appendMessage('user', 'คัดกรองหุ้นทั้งตลาด (Market-Wide Smart Screen)');
 		const configId = appendChatMessage({
 			role: 'bot',
 			kind: 'config',
-			mode,
-			content: 'รับทราบครับ กรุณาตั้งค่าจำนวนหุ้นและสภาวะตลาดที่คุณคาดการณ์ เพื่อให้ผมคัดกรองได้แม่นยำขึ้นครับ',
+			content: 'รับทราบครับ กรุณาตั้งค่าจำนวนหุ้นและสภาวะตลาดที่คุณคาดการณ์ เพื่อให้ผมคัดกรองหุ้นเด่นจากทั้งตลาดได้แม่นยำขึ้นครับ',
 		});
 		setActiveConfigMessageId(configId);
 	};
@@ -538,16 +613,54 @@ export default function RoboAdvisorChat() {
 		openChat();
 	};
 
-	const runSmartScreen = async () => {
-		if (!selectedMode) return;
+	const sleepForPolling = (delayMs: number) =>
+		new Promise<void>((resolve) => {
+			pollingTimerRef.current = setTimeout(() => {
+				pollingTimerRef.current = null;
+				resolve();
+			}, delayMs);
+		});
 
+	const pollSmartScreenStatus = async (checkStatusUrl: string) => {
+		while (!isPollingCancelledRef.current) {
+			const response = await fetch(checkStatusUrl, {
+				method: 'GET',
+				cache: 'no-store',
+			});
+
+			const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+			const responseStatus = typeof payload.status === 'string' ? payload.status : undefined;
+			const responseMessage = typeof payload.message === 'string' ? payload.message : undefined;
+			const responseError = typeof payload.error === 'string' ? payload.error : undefined;
+			const responseDetail = typeof payload.detail === 'string' ? payload.detail : undefined;
+
+			if (response.status === 202 || responseStatus === 'PROCESSING') {
+				setLoadingMessage(responseMessage || 'ระบบกำลังจัดอันดับหุ้น...');
+				await sleepForPolling(2500);
+				continue;
+			}
+
+			if (!response.ok) {
+				throw new Error(responseError || responseDetail || responseMessage || 'ไม่สามารถตรวจสอบสถานะ Smart Screening ได้');
+			}
+
+			if (responseStatus !== 'COMPLETED') {
+				throw new Error('ได้รับสถานะ Smart Screening ที่ไม่รองรับ');
+			}
+
+			return payload as unknown as SmartScreenCompletedResponse;
+		}
+
+		throw new Error('ยกเลิกการติดตามสถานะ Smart Screening');
+	};
+
+	const runSmartScreen = async () => {
 		if (activeConfigMessageId !== null) {
 			setSubmittedConfigs((current) => ({
 				...current,
 				[activeConfigMessageId]: {
 					limit,
 					regime: selectedRegime,
-					mode: selectedMode,
 				},
 			}));
 		}
@@ -557,72 +670,75 @@ export default function RoboAdvisorChat() {
 		appendMessage('bot', 'รับทราบครับ กำลังคัดกรองหุ้นตามเงื่อนไขที่คุณเลือกให้ครับ');
 		setStep('loading');
 		setIsLoading(true);
+		setLoadingMessage('กำลังส่งคำขอคัดกรองหุ้นทั้งตลาด...');
+		clearPollingTimer();
 
 		try {
 			const params = new URLSearchParams({
-				limit: String(limit),
-				isSectorQuota: selectedMode === 'sector' ? 'true' : 'false',
+				topN: String(limit),
+				targetRegime: selectedRegime === SYSTEM_DEFAULT_VALUE ? 'AUTO' : selectedRegime,
 			});
 
-			if (selectedMode === 'sector') {
-				params.set('quotaPerSector', '2');
-			}
-
-			if (selectedRegime !== SYSTEM_DEFAULT_VALUE) {
-				params.set('userExpectedRegime', selectedRegime);
-			}
-
-			const response = await fetch(`/api/v1/portfolio/smart-screen?${params.toString()}`, {
-				method: 'GET',
+			const response = await fetch(`/api/v1/portfolio/smart-screen-async?${params.toString()}`, {
+				method: 'POST',
 				cache: 'no-store',
 			});
 
-			const payload = (await response.json().catch(() => ({}))) as SmartScreenResponse & ApiErrorResponse;
+			const payload = (await response.json().catch(() => ({}))) as SmartScreenAcceptedResponse & ApiErrorResponse;
 
 			if (!response.ok) {
 				throw new Error(payload.error || payload.detail || 'ไม่สามารถดึงข้อมูล Smart Screening ได้');
 			}
 
-			appendMessage('bot', buildResultsNode(payload, selectedRegime));
+			setLoadingMessage(payload.message || 'ระบบกำลังจัดอันดับหุ้น...');
+			const completedPayload = await pollSmartScreenStatus(payload.checkStatusUrl);
+			appendMessage('bot', buildResultsNode(completedPayload, selectedRegime));
 			setStep('done');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'ไม่สามารถดึงข้อมูล Smart Screening ได้';
+			if (message !== 'ยกเลิกการติดตามสถานะ Smart Screening') {
+				toast.error(message);
+			}
 			appendMessage('bot', message);
 			const configId = appendChatMessage({
 				role: 'bot',
 				kind: 'config',
-				mode: selectedMode,
 				content: 'ลองปรับจำนวนหุ้นหรือสภาวะตลาดอีกครั้ง แล้วให้ผมคัดกรองใหม่ได้เลยครับ',
 			});
 			setActiveConfigMessageId(configId);
 			setStep('config');
 		} finally {
+			clearPollingTimer();
 			setIsLoading(false);
+			setLoadingMessage('RoboChat กำลังวิเคราะห์ข้อมูลให้คุณ...');
 		}
 	};
 
-	const renderConfigSummary = (messageId: number, mode?: ScreenMode) => {
+	const renderConfigSummary = (messageId: number) => {
 		const submittedConfig = submittedConfigs[messageId];
-		const summaryMode = submittedConfig?.mode ?? mode;
 		const summaryLimit = submittedConfig?.limit ?? limit;
 		const summaryRegime = submittedConfig?.regime ?? selectedRegime;
 
 		return (
 			<div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-sm">
-				<p className="font-medium text-slate-900">{summaryMode ? MODE_LABELS[summaryMode] : 'Smart Screening'}</p>
+				<p className="font-medium text-slate-900">Market-Wide Smart Screening</p>
 				<p className="mt-1">จำนวนหุ้น {summaryLimit} ตัว</p>
 				<p className="mt-1">สภาวะตลาด: {normalizeRegimeLabel(summaryRegime)}</p>
 			</div>
 		);
 	};
 
-	const renderConfigForm = (mode?: ScreenMode) => (
+	const renderConfigForm = () => (
 		<div className="mt-3 flex w-full flex-col gap-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-900">
+			<div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-6 text-slate-700">
+				ระบบจะคัดกรองหุ้นจากทั้งตลาดโดยอิง 4 ปัจจัยหลัก Q, V, G, R และแต่ละคะแนนอยู่ในช่วง -3 ถึง +3
+			</div>
 			<div className="flex items-center justify-between gap-3">
 				<label htmlFor="smart-screen-limit" className="text-sm font-medium text-slate-700">
 					จำนวนหุ้น (5-20)
 				</label>
 				<input
+					ref={smartScreenLimitInputRef}
 					id="smart-screen-limit"
 					type="number"
 					min={5}
@@ -678,7 +794,7 @@ export default function RoboAdvisorChat() {
 			<Button
 				type="button"
 				onClick={runSmartScreen}
-				disabled={!mode || isLoading}
+				disabled={isLoading}
 				className="h-11 w-full rounded-lg bg-blue-600 text-sm font-medium text-white hover:bg-blue-500 disabled:bg-slate-300"
 			>
 				ยืนยันการตั้งค่า (Confirm)
@@ -693,7 +809,7 @@ export default function RoboAdvisorChat() {
 			return (
 				<>
 					<p>{message.content}</p>
-					{isActiveForm ? renderConfigForm(message.mode) : renderConfigSummary(message.id, message.mode)}
+					{isActiveForm ? renderConfigForm() : renderConfigSummary(message.id)}
 				</>
 			);
 		}
@@ -772,20 +888,13 @@ export default function RoboAdvisorChat() {
 								<div className="flex justify-start">
 									<div className="w-full max-w-[95%] self-start rounded-2xl rounded-bl-sm border border-slate-200 bg-slate-100 p-4 text-slate-800 shadow-[0_12px_30px_rgba(0,0,0,0.16)] md:max-w-[96%]">
 										<div className="grid gap-3">
-											<p className="text-sm text-slate-700">ต้องการให้ผมช่วยคัดกรองหุ้นแบบไหนดีครับ?</p>
+											<p className="text-sm text-slate-700">ต้องการให้ผมช่วยคัดกรองหุ้นเด่นจากทั้งตลาดกี่ตัวดีครับ?</p>
 											<Button
 												type="button"
-												onClick={() => handleSelectMode('global')}
+												onClick={handleStartSmartScreen}
 												className="h-auto justify-start rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-800 shadow-sm hover:bg-slate-50"
 											>
-												เปรียบเทียบหุ้นทั้งตลาด (Global Screen)
-											</Button>
-											<Button
-												type="button"
-												onClick={() => handleSelectMode('sector')}
-												className="h-auto justify-start rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-800 shadow-sm hover:bg-slate-50"
-											>
-												เปรียบเทียบหุ้นรายอุตสาหกรรม (Best per Sector)
+												เริ่มคัดกรองหุ้นทั้งตลาด (Market-Wide Smart Screen)
 											</Button>
 										</div>
 									</div>
@@ -796,7 +905,7 @@ export default function RoboAdvisorChat() {
 								<div className="flex justify-start">
 									<div className="inline-flex items-center gap-2 self-start rounded-2xl rounded-bl-sm border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-800">
 										<Loader2 className="h-4 w-4 animate-spin" />
-										RoboChat กำลังวิเคราะห์ข้อมูลให้คุณ...
+										{loadingMessage}
 									</div>
 								</div>
 							) : null}

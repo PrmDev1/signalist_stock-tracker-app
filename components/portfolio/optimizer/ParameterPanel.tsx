@@ -30,7 +30,7 @@ function getRiskLevelBadge(level: PortfolioRiskLevel | null): { label: string; c
   }
 
   return {
-    label: 'MED RISK',
+    label: 'MEDIUM RISK',
     className: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
   };
 }
